@@ -1,0 +1,8 @@
+*CMakeLists.txt
+*.cmd
+*.sh
+*.py
+*.pyc
+.code
+.idea
+
