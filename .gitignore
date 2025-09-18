@@ -1,6 +1,7 @@
-*CMakeLists.txt
+CMakeLists.txt
 *.cmd
 *.sh
+*.o
 *.py
 *.pyc
 .code
