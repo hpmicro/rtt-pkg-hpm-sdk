@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 HPMicro
+ * Copyright (c) 2021-2024,2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -8,7 +8,8 @@
 #ifndef HPM_SOC_FEATURE_H
 #define HPM_SOC_FEATURE_H
 
-#include "hpm_soc.h"
+#include "riscv/riscv_core.h"
+#include "hpm_soc_ip.h"
 #include "hpm_soc_ip_feature.h"
 
 /*
@@ -44,6 +45,8 @@
 #define I2S_SOC_MAX_CHANNEL_NUM (16U)
 #define I2S_SOC_MAX_TX_CHANNEL_NUM (8U)
 #define I2S_SOC_MAX_TX_FIFO_DEPTH (8U)
+#define I2S_PDM_DATA_LINE (0)
+#define I2S_DAO_DATA_LINE (0)
 #define PDM_I2S HPM_I2S0
 #define DAO_I2S HPM_I2S1
 #define PDM_SOC_SAMPLE_RATE_IN_HZ (16000U)
@@ -131,11 +134,15 @@
 #define ADC_SOC_PREEMPT_ENABLE_CTRL_SUPPORT        (1U)
 #define ADC_SOC_SEQ_MAX_DMA_BUFF_LEN_IN_4BYTES     (4096U)
 #define ADC_SOC_PMT_MAX_DMA_BUFF_LEN_IN_4BYTES     (48U)
+#define ADC_SOC_HW_TRIG_SRC                        (1U)
 
 #define ADC16_SOC_PARAMS_LEN                       (34U)
 #define ADC16_SOC_MAX_CH_NUM                       (15U)
 #define ADC16_SOC_MAX_SAMPLE_VALUE                 (65535U)
 #define ADC16_SOC_MAX_CONV_CLK_NUM                 (21U)
+#define ADC16_SOC_CONV_CLK_FREQ_MAX                (50000000UL)
+/* WDOG: Do not set INT_EN in adc16_init_channel. Use adc16_enable_wdog_interrupt() after in-window conversion. */
+#define ADC16_SOC_WDOG_INT_EN_DEFERRED             (1U)
 
 /*
  * SYSCTL Section
@@ -170,6 +177,7 @@
 #define DAC_SOC_MAX_DATA          (4095U)
 #define DAC_SOC_MAX_BUFF_COUNT    (65536U)
 #define DAC_SOC_MAX_OUTPUT_FREQ   (1000000UL)
+#define DAC_SOC_ANA_CLK_FREQ_MAX  (100000000UL)
 
 
 /*

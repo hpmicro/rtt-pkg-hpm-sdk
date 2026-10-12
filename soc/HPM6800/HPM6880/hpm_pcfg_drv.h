@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 HPMicro
+ * Copyright (c) 2023-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -14,7 +14,7 @@
 /**
  *
  * @brief PCFG driver APIs
- * @defgroup pcfg_interface PCFG driver APIs
+ * @defgroup pcfg_hpm6880_interface PCFG driver APIs for HPM6880
  * @ingroup io_interfaces
  * @{
  */
@@ -599,6 +599,17 @@ static inline void pcfg_ddr_dcdc_set_voltage_output(PCFG_Type *ptr, uint8_t volt
                         | PCFG_DCDCM_MODE_VOLT_SET(voltage) | PCFG_DCDCM_MODE_MODE_SET(pcfg_dcdc_mode_basic);
 }
 
+/*
+ * @brief set on-chip DDR DCDC low power voltage
+ * @param[in] ptr base address
+ * @param[in] voltage unit mv
+ */
+static inline void pcfg_ddr_dcdc_set_lpmode_voltage(PCFG_Type *ptr, uint8_t voltage)
+{
+    ptr->DCDCM_LPMODE = (ptr->DCDCM_LPMODE & ~(PCFG_DCDCM_LPMODE_STBY_VOLT_MASK))
+                        | PCFG_DCDCM_LPMODE_STBY_VOLT_SET(voltage);
+}
+
 /**
  * @brief set ddr low power current limit
  *
@@ -858,6 +869,36 @@ static inline void pcfg_irc24m_reload_trim(PCFG_Type *ptr)
 {
     ptr->RC24M &= ~PCFG_RC24M_RC_TRIMMED_MASK;
 }
+
+/**
+ * @brief dcdc switch to dcm mode
+ *
+ * @param[in] ptr base address
+ */
+void pcfg_dcdc_switch_to_dcm_mode(PCFG_Type *ptr);
+
+/**
+ * @brief dcdc switch to ccm mode
+ *
+ * @param[in] ptr base address
+ */
+void pcfg_dcdc_switch_to_ccm_mode(PCFG_Type *ptr);
+
+/**
+ * @brief set dcdc voltage and switch to dcm mode
+ *
+ * @param[in] ptr base address
+ * @param[in] voltage target voltage in mV
+ */
+void pcfg_dcdc_set_voltage_dcm_mode(PCFG_Type *ptr, uint16_t voltage);
+
+/**
+ * @brief set dcdc voltage and switch to ccm mode
+ *
+ * @param[in] ptr base address
+ * @param[in] voltage target voltage in mV
+ */
+void pcfg_dcdc_set_voltage_ccm_mode(PCFG_Type *ptr, uint16_t voltage);
 
 /**
  * @brief config irc24m track

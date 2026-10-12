@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 HPMicro
+ * Copyright (c) 2023-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -79,7 +79,7 @@ hpm_stat_t sei_transceiver_config_init(SEI_Type *ptr, uint8_t idx, sei_transceiv
             data_len--;
         }
         wait_len = config->asynchronous_config.wait_len;
-#if !defined(HPM_IP_FEATURE_SEI_ASYNCHRONOUS_MODE_V2) || !HPM_IP_FEATURE_SEI_ASYNCHRONOUS_MODE_V2
+#if defined(HPM_IP_FEATURE_SEI_ERRATA_E00048) && HPM_IP_FEATURE_SEI_ERRATA_E00048
         if (wait_len == 0) {
             wait_len = 1;
         }
@@ -92,18 +92,18 @@ hpm_stat_t sei_transceiver_config_init(SEI_Type *ptr, uint8_t idx, sei_transceiv
             | SEI_CTRL_XCVR_TYPE_CFG_DA_IDLEV_SET(config->asynchronous_config.data_idle_state);
         ptr->CTRL[idx].XCVR.TYPE_CFG = tmp;
 
-#if defined(HPM_IP_FEATURE_SEI_ASYNCHRONOUS_MODE_V2) && HPM_IP_FEATURE_SEI_ASYNCHRONOUS_MODE_V2
+#if defined(HPM_IP_FEATURE_SEI_ERRATA_E00048) && HPM_IP_FEATURE_SEI_ERRATA_E00048
+        baudrate = (config->asynchronous_config.baudrate / 100) * 102;
+        baud_div = (config->src_clk_freq + (baudrate >> 1u)) / baudrate;
+        sync_point = (baud_div + 2u);
+        txd_point = 0;
+        rxd_point = (baud_div * 3) >> 2u;
+#else
         baudrate = config->asynchronous_config.baudrate;
         baud_div = (config->src_clk_freq + (baudrate >> 1u)) / baudrate;
         sync_point = baud_div >> 1u;
         txd_point = 0;
         rxd_point = baud_div >> 1u;
-#else
-        baudrate = (config->asynchronous_config.baudrate / 100) * 103;
-        baud_div = (config->src_clk_freq + (baudrate >> 1u)) / baudrate;
-        sync_point = (baud_div + 2u);
-        txd_point = 0;
-        rxd_point = (baud_div * 3) >> 2u;
 #endif
         tmp = SEI_CTRL_XCVR_BAUD_CFG_SYNC_POINT_SET(sync_point)
             | SEI_CTRL_XCVR_BAUD_CFG_BAUD_DIV_SET(baud_div - 1u);
@@ -210,7 +210,7 @@ hpm_stat_t sei_cmd_table_config_init(SEI_Type *ptr, uint8_t idx, uint8_t table_i
 
 hpm_stat_t sei_state_transition_config_init(SEI_Type *ptr, uint8_t idx, uint8_t latch_idx, uint8_t state, sei_state_transition_config_t *config)
 {
-#if defined(HPM_IP_FEATURE_SEI_RX_LATCH_FEATURE) && HPM_IP_FEATURE_SEI_RX_LATCH_FEATURE
+#if !defined(HPM_IP_FEATURE_SEI_ERRATA_E00047) || !HPM_IP_FEATURE_SEI_ERRATA_E00047
     uint32_t tmp;
     tmp = SEI_CTRL_LATCH_TRAN_POINTER_SET(config->instr_ptr_value)
         | SEI_CTRL_LATCH_TRAN_CFG_TM_SET(config->timeout_cfg)
@@ -392,4 +392,49 @@ void sei_set_instr(SEI_Type *ptr, uint8_t idx, uint8_t op, uint8_t ck, uint8_t c
         | SEI_INSTR_OPR_SET(opr);
 
     ptr->INSTR[idx] = tmp;
+}
+
+uint32_t sei_get_crc_value(SEI_Type *ptr, uint8_t idx)
+{
+    uint32_t data = ptr->DAT[idx].DATA;
+    uint32_t data_idx = ptr->DAT[idx].IDX;
+    uint32_t mode = ptr->DAT[idx].MODE;
+    uint32_t min = SEI_DAT_IDX_MIN_BIT_GET(data_idx);
+    uint32_t max = SEI_DAT_IDX_MAX_BIT_GET(data_idx);
+    bool crc_invert = SEI_DAT_MODE_CRC_INV_GET(mode);
+    bool msb = SEI_DAT_MODE_BORDER_GET(mode);
+    uint32_t left;
+    uint32_t right;
+    uint32_t left_bit;
+    uint32_t right_bit;
+    uint32_t mask;
+    uint32_t crc_Len;
+
+    assert(idx >= SEI_DAT_2);
+
+    if (crc_invert) {
+        data = ~data;
+    }
+
+    if (!msb) {
+        left = min;
+        right = max;
+        while (left < right) {
+            left_bit = (data >> left) & 1;
+            right_bit = (data >> right) & 1;
+
+            if (left_bit != right_bit) {
+                mask = (1U << left) | (1U << right);
+                data ^= mask;
+            }
+            left++;
+            right--;
+        }
+    }
+
+    crc_Len = (max - min) + 1;
+    mask = (1U << crc_Len) - 1;
+    data = (data >> min) & mask;
+
+    return data;
 }

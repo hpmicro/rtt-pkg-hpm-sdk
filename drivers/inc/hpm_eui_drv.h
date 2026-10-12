@@ -9,13 +9,13 @@
 #define HPM_EUI_DRV_H
 
 #include "hpm_common.h"
-#include "hpm_soc_ip_feature.h"
+#include "hpm_soc_feature.h"
 #include "hpm_eui_regs.h"
 
 /**
  * @brief EUI driver APIs
  * @defgroup eui_interface EUI driver APIs
- * @ingroup eui_interface
+ * @ingroup io_interfaces
  * @{
  */
 

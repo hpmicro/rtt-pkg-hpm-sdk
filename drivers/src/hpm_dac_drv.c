@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 HPMicro
+ * Copyright (c) 2021-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -190,6 +190,26 @@ hpm_stat_t dac_set_output_frequency(DAC_Type *ptr, uint32_t dac_input_freq, uint
     return status_success;
 }
 
+hpm_stat_t dac_calc_ana_divider(uint32_t input_hz, uint32_t target_ana_hz, uint8_t *ana_div)
+{
+    uint8_t i;
+    uint8_t ratio;
+
+    if ((input_hz == 0) || (target_ana_hz == 0) || (ana_div == NULL)) {
+        return status_invalid_argument;
+    }
+
+    for (i = (uint8_t)dac_ana_div_2; i <= (uint8_t)dac_ana_div_8; i++) {
+        ratio = dac_ana_div_to_ratio(i);
+        if ((ratio != 0) && ((input_hz / ratio) <= target_ana_hz)) {
+            *ana_div = i;
+            return status_success;
+        }
+    }
+
+    return status_invalid_argument;
+}
+
 hpm_stat_t dac_set_step_sw_trigger(DAC_Type *ptr, uint8_t step_sw_trig_idx)
 {
     if (step_sw_trig_idx > DAC_STEP_CFG_STEP3) {
@@ -220,7 +240,7 @@ void dac_set_buffer_sw_trigger(DAC_Type *ptr)
     ptr->CFG2 |= DAC_CFG2_BUF_SW_TRIG_MASK;
 }
 
-void dac_set_buffer_DMA_reset(DAC_Type *ptr)
+void dac_set_buffer_dma_reset(DAC_Type *ptr)
 {
     ptr->CFG2 |= DAC_CFG2_DMA_RST1_MASK | DAC_CFG2_DMA_RST0_MASK | DAC_CFG2_FIFO_CLR_MASK;
 }
@@ -240,7 +260,7 @@ void dac_enable_conversion(DAC_Type *ptr, bool enable)
     ptr->ANA_CFG0 |= DAC_ANA_CFG0_DAC12BIT_EN_SET(enable);
 }
 
-hpm_stat_t dac_external_DMA_request_enable(DAC_Type *ptr, uint8_t buf_idx, bool enable)
+hpm_stat_t dac_external_dma_request_enable(DAC_Type *ptr, uint8_t buf_idx, bool enable)
 {
     if (buf_idx > DAC_BUF_ADDR_BUF1) {
         return status_invalid_argument;

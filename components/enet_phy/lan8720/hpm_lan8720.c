@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 HPMicro
+ * Copyright (c) 2024-2025 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -17,12 +17,14 @@
  * Internal API
  *---------------------------------------------------------------------
  */
-static bool lan8720_check_id(ENET_Type *ptr)
+static bool lan8720_check_id(ENET_Type *ptr, uint32_t phy_addr)
 {
     uint16_t id1, id2;
 
-    id1 = enet_read_phy(ptr, LAN8720_ADDR, LAN8720_PHYID1);
-    id2 = enet_read_phy(ptr, LAN8720_ADDR, LAN8720_PHYID2);
+    if (enet_read_phy(ptr, phy_addr, LAN8720_PHYID1, &id1) != status_success ||
+        enet_read_phy(ptr, phy_addr, LAN8720_PHYID2, &id2) != status_success) {
+        return false;
+    }
 
     if (LAN8720_PHYID1_OUI_MSB_GET(id1) == LAN8720_ID1 && LAN8720_PHYID2_OUI_LSB_GET(id2) == LAN8720_ID2) {
         return true;
@@ -35,17 +37,22 @@ static bool lan8720_check_id(ENET_Type *ptr)
  * API
  *---------------------------------------------------------------------
  */
-void lan8720_reset(ENET_Type *ptr)
+bool lan8720_reset(ENET_Type *ptr, uint32_t phy_addr)
 {
     uint16_t data;
+    uint32_t retry_cnt = ENET_PHY_SW_RESET_RETRY_CNT;
 
     /* PHY reset */
-    enet_write_phy(ptr, LAN8720_ADDR, LAN8720_BMCR, LAN8720_BMCR_RESET_SET(1));
+    enet_write_phy(ptr, phy_addr, LAN8720_BMCR, LAN8720_BMCR_RESET_SET(1));
 
     /* wait until the reset is completed */
     do {
-        data = enet_read_phy(ptr, LAN8720_ADDR, LAN8720_BMCR);
-    } while (LAN8720_BMCR_RESET_GET(data));
+        if (enet_read_phy(ptr, phy_addr, LAN8720_BMCR, &data) != status_success) {
+            return false;
+        }
+    } while (LAN8720_BMCR_RESET_GET(data) && --retry_cnt);
+
+    return retry_cnt > 0 ? true : false;
 }
 
 void lan8720_basic_mode_default_config(ENET_Type *ptr, lan8720_config_t *config)
@@ -60,7 +67,7 @@ void lan8720_basic_mode_default_config(ENET_Type *ptr, lan8720_config_t *config)
     #endif
 }
 
-bool lan8720_basic_mode_init(ENET_Type *ptr, lan8720_config_t *config)
+bool lan8720_basic_mode_init(ENET_Type *ptr, uint32_t phy_addr, lan8720_config_t *config)
 {
     uint16_t data = 0;
 
@@ -77,23 +84,75 @@ bool lan8720_basic_mode_init(ENET_Type *ptr, lan8720_config_t *config)
     }
 
     /* check the id of lan8720 */
-    if (lan8720_check_id(ptr) == false) {
+    if (lan8720_check_id(ptr, phy_addr) == false) {
         return false;
     }
 
-    enet_write_phy(ptr, LAN8720_ADDR, LAN8720_BMCR, data);
+    enet_write_phy(ptr, phy_addr, LAN8720_BMCR, data);
 
     return true;
 }
 
-void lan8720_get_phy_status(ENET_Type *ptr, enet_phy_status_t *status)
+hpm_stat_t lan8720_get_phy_status(ENET_Type *ptr, uint32_t phy_addr, enet_phy_status_t *status)
 {
-    uint16_t data;
+    uint16_t bmsr, bmcr, pscsr;
+    uint8_t speed;
+    hpm_stat_t stat;
 
-    data = enet_read_phy(ptr, LAN8720_ADDR, LAN8720_BMSR);
-    status->enet_phy_link = LAN8720_BMSR_LINK_STATUS_GET(data);
+    if (status == NULL) {
+        return status_invalid_argument;
+    }
 
-    data = enet_read_phy(ptr, LAN8720_ADDR, LAN8720_PSCSR);
-    status->enet_phy_speed = LAN8720_PSCSR_SPEED_GET(data) == 1 ? enet_phy_port_speed_10mbps : enet_phy_port_speed_100mbps;
-    status->enet_phy_duplex = LAN8720_PSCSR_DUPLEX_GET(data);
+    status->enet_phy_speed_valid = 0U;
+
+    /* BMSR link bit is latched; second read is current state per IEEE 802.3 */
+    stat = enet_read_phy(ptr, phy_addr, LAN8720_BMSR, &bmsr);
+    if (stat != status_success) {
+        status->enet_phy_link = enet_phy_link_unknown;
+        return stat;
+    }
+    stat = enet_read_phy(ptr, phy_addr, LAN8720_BMSR, &bmsr);
+    if (stat != status_success) {
+        status->enet_phy_link = enet_phy_link_unknown;
+        return stat;
+    }
+    status->enet_phy_link = LAN8720_BMSR_LINK_STATUS_GET(bmsr);
+
+    if (status->enet_phy_link == 0U) {
+        return status_success;
+    }
+
+    stat = enet_read_phy(ptr, phy_addr, LAN8720_BMCR, &bmcr);
+    if (stat != status_success) {
+        status->enet_phy_link = enet_phy_link_unknown;
+        return stat;
+    }
+    if (LAN8720_BMCR_ANE_GET(bmcr) == 0U) {
+        status->enet_phy_speed = LAN8720_BMCR_SPEED_GET(bmcr) ? enet_phy_port_speed_100mbps : enet_phy_port_speed_10mbps;
+        status->enet_phy_duplex = LAN8720_BMCR_DUPLEX_GET(bmcr);
+        status->enet_phy_speed_valid = 1U;
+        return status_success;
+    }
+
+    stat = enet_read_phy(ptr, phy_addr, LAN8720_PSCSR, &pscsr);
+    if (stat != status_success) {
+        status->enet_phy_link = enet_phy_link_unknown;
+        return stat;
+    }
+    if (LAN8720_PSCSR_AUTODONE_GET(pscsr) == 0U) {
+        return status_success;
+    }
+
+    speed = LAN8720_PSCSR_SPEED_GET(pscsr);
+    if (speed == 1U) {
+        status->enet_phy_speed = enet_phy_port_speed_10mbps;
+        status->enet_phy_duplex = LAN8720_PSCSR_DUPLEX_GET(pscsr);
+        status->enet_phy_speed_valid = 1U;
+    } else if (speed == 2U) {
+        status->enet_phy_speed = enet_phy_port_speed_100mbps;
+        status->enet_phy_duplex = LAN8720_PSCSR_DUPLEX_GET(pscsr);
+        status->enet_phy_speed_valid = 1U;
+    }
+
+    return status_success;
 }

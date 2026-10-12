@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 HPMicro
+ * Copyright (c) 2021-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -11,8 +11,21 @@
 #define HPM_I2C_DRV_DEFAULT_TPM (0U)
 #endif
 
+/*
+ * Polling iterations used as timeout by the blocking APIs.
+ *
+ * This is not a delay: each loop exits as soon as its condition is met, so a
+ * larger value only makes a real fault take longer to be reported. It has to
+ * cover draining a full TX FIFO plus the STOP at the slowest SCL (up to
+ * ~1.4 ms at 100 kHz), while one iteration is only a few tens of ns.
+ */
 #ifndef HPM_I2C_DRV_DEFAULT_RETRY_COUNT
-#define HPM_I2C_DRV_DEFAULT_RETRY_COUNT (5000U)
+#define HPM_I2C_DRV_DEFAULT_RETRY_COUNT (50000U)
+#endif
+
+/* Address probing does not need the longer transfer timeout. */
+#ifndef HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT
+#define HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT (5000U)
 #endif
 
 #define period_in_100ps(freq) (10000000000UL / (freq))
@@ -107,20 +120,58 @@ static hpm_stat_t i2c_configure_timing(uint32_t src_clk_in_hz,
     temp1 = (timing->t_high - 2 * tpclk) / tpclk / (HPM_I2C_DRV_DEFAULT_TPM + 1) - 2 - timing->t_sp;
 
     /*
-     * SCLK High period = (2 * tpclk) + (2 + T_SP + T_SCLHi) * tpclk * (TPM + 1) > period / (1 + ratio);
-     */
-    temp2 = (period / (1 + timing->t_sclratio) - 2 * tpclk) / tpclk / (HPM_I2C_DRV_DEFAULT_TPM + 1) - 2 - timing->t_sp;
-
-    /*
      * SCLK Low period = (2 * tpclk) + (2 + T_SP + T_SCLHi * ratio) * tpclk * (TPM + 1) > t_low;
      */
-    temp3 = ((timing->t_low - 2 * tpclk) / tpclk / (HPM_I2C_DRV_DEFAULT_TPM + 1) - 2 - timing->t_sp) / (timing->t_sclratio);
+    temp2 = ((timing->t_low - 2 * tpclk) / tpclk / (HPM_I2C_DRV_DEFAULT_TPM + 1) - 2 - timing->t_sp) / (timing->t_sclratio);
+
+    /*
+     * Adjust T_SCLHi so that (High + Low) is as close as possible to the
+     * target "period" (derived from requested SCL frequency).
+     *
+     * From HW timing definition:
+     *   High = (2 * tpclk) + (2 + T_SP + T_SCLHi) * tpclk * (TPM + 1)
+     *   Low  = (2 * tpclk) + (2 + T_SP + T_SCLHi * ratio) * tpclk * (TPM + 1)
+     *
+     * Therefore:
+     *   High + Low = 4 * tpclk + (4 + 2*T_SP + T_SCLHi*(1 + ratio)) * tpclk * (TPM + 1)
+     *
+     * solve the above equation for T_SCLHi using integer arithmetic:
+     *   T_SCLHi ~= (period - 4*tpclk - (4 + 2*T_SP) * tpclk*(TPM+1)) / (tpclk*(TPM+1)*(1+ratio))
+     *
+     */
+    /* temp3 is the candidate value of T_SCLHi derived from (High+Low)=period */
+    {
+        /*
+         * Integer inverse solution for:
+         *   High + Low = period
+         * where:
+         *   High = 2*tpclk + (2 + T_SP + T_SCLHi) * tpclk * (TPM+1)
+         *   Low  = 2*tpclk + (2 + T_SP + T_SCLHi*ratio) * tpclk * (TPM+1)
+         *
+         * Rearranged:
+         *   T_SCLHi ~= (period - 4*tpclk - (4 + 2*T_SP)*tpclk*(TPM+1)) / (tpclk*(TPM+1)*(1+ratio))
+         *
+         * Notes on integer division error:
+         * - Use round-to-nearest instead of truncation.
+         */
+        int32_t numerator = period - (4 * tpclk) - ((4 + 2 * timing->t_sp) * tpclk * (HPM_I2C_DRV_DEFAULT_TPM + 1));
+        int32_t denom = tpclk * (HPM_I2C_DRV_DEFAULT_TPM + 1) * (1 + timing->t_sclratio);
+
+        temp3 = (numerator + denom / 2) / denom;
+
+    }
 
     timing->t_sclhi = MAX(MAX(temp1, temp2), temp3);
 
-    /* update high_period and low_period to calculated value */
-    timing->t_high = 2 * tpclk + (2 + timing->t_sp + timing->t_sclhi) * tpclk;
-    timing->t_low = timing->t_high * timing->t_sclratio;
+    /*
+     * Update the actual High/Low periods based on the selected T_SCLHi.
+     * The selected T_SCLHi is the maximum of the candidates required by:
+     *   - t_high minimum constraint (temp1)
+     *   - t_low minimum constraint (temp2)
+     *   - (High+Low) closeness to period (temp3)
+     */
+    timing->t_high = 2 * tpclk + (2 + timing->t_sp + timing->t_sclhi) * tpclk * (HPM_I2C_DRV_DEFAULT_TPM + 1);
+    timing->t_low = 2 * tpclk + (2 + timing->t_sp + timing->t_sclhi * timing->t_sclratio) * tpclk * (HPM_I2C_DRV_DEFAULT_TPM + 1);
 
     return status_success;
 }
@@ -205,13 +256,13 @@ hpm_stat_t i2c_master_address_read(I2C_Type *ptr, const uint16_t device_address,
 
     /* Before starting to transmit data, judge addrhit to ensure that the slave address exists on the bus. */
     retry = 0;
-    while (!(ptr->STATUS & I2C_STATUS_ADDRHIT_MASK)) {
-        if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {
+    while (i2c_is_addrhit(ptr) == false) {
+        if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
             break;
         }
         retry++;
     }
-    if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {
+    if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
         /* the address misses, a stop needs to be added to prevent the bus from being busy. */
         ptr->STATUS = I2C_STATUS_CMPL_MASK;
         ptr->CTRL = I2C_CTRL_PHASE_STOP_MASK;
@@ -244,6 +295,23 @@ hpm_stat_t i2c_master_address_read(I2C_Type *ptr, const uint16_t device_address,
 #endif
         | I2C_CTRL_DATACNT_SET(I2C_DATACNT_MAP(size_in_byte));
     ptr->CMD = I2C_CMD_ISSUE_DATA_TRANSMISSION;
+
+    /* Before restarting to transmit data, judge addrhit to ensure that the slave address exists on the bus. */
+    retry = 0;
+    while (i2c_is_addrhit(ptr) == false) {
+        if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
+            break;
+        }
+        retry++;
+    }
+    if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
+        /* the address misses, a stop needs to be added to prevent the bus from being busy. */
+        ptr->STATUS = I2C_STATUS_CMPL_MASK;
+        ptr->CTRL = I2C_CTRL_PHASE_STOP_MASK;
+        ptr->CMD = I2C_CMD_ISSUE_DATA_TRANSMISSION;
+        return status_i2c_no_addr_hit;
+    }
+    ptr->STATUS = I2C_STATUS_ADDRHIT_MASK;
 
     retry = 0;
     left = size_in_byte;
@@ -326,13 +394,13 @@ hpm_stat_t i2c_master_address_write(I2C_Type *ptr, const uint16_t device_address
 
     /* Before starting to transmit data, judge addrhit to ensure that the slave address exists on the bus. */
     retry = 0;
-    while (!(ptr->STATUS & I2C_STATUS_ADDRHIT_MASK)) {
-        if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {
+    while (i2c_is_addrhit(ptr) == false) {
+        if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
             break;
         }
         retry++;
     }
-    if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {
+    if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
         return status_i2c_no_addr_hit;
     }
     ptr->STATUS = I2C_STATUS_ADDRHIT_MASK;
@@ -412,13 +480,13 @@ hpm_stat_t i2c_master_read(I2C_Type *ptr, const uint16_t device_address,
 
     /* Before starting to transmit data, judge addrhit to ensure that the slave address exists on the bus. */
     retry = 0;
-    while (!(ptr->STATUS & I2C_STATUS_ADDRHIT_MASK)) {
-        if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {
+    while (i2c_is_addrhit(ptr) == false) {
+        if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
             break;
         }
         retry++;
     }
-    if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {
+    if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
         return status_i2c_no_addr_hit;
     }
     ptr->STATUS = I2C_STATUS_ADDRHIT_MASK;
@@ -505,13 +573,13 @@ hpm_stat_t i2c_master_write(I2C_Type *ptr, const uint16_t device_address,
 
     /* Before starting to transmit data, judge addrhit to ensure that the slave address exists on the bus. */
     retry = 0;
-    while (!(ptr->STATUS & I2C_STATUS_ADDRHIT_MASK)) {
-        if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {
+    while (i2c_is_addrhit(ptr) == false) {
+        if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
             break;
         }
         retry++;
     }
-    if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {
+    if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
         return status_i2c_no_addr_hit;
     }
     ptr->STATUS = I2C_STATUS_ADDRHIT_MASK;
@@ -596,7 +664,7 @@ hpm_stat_t i2c_slave_write(I2C_Type *ptr, uint8_t *buf, const uint32_t size)
 
     /* wait for address hit */
     retry = 0;
-    while (!(ptr->STATUS & I2C_STATUS_ADDRHIT_MASK)) {
+    while (i2c_is_addrhit(ptr) == false) {
         if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {
             break;
         }
@@ -663,7 +731,7 @@ hpm_stat_t i2c_slave_read(I2C_Type *ptr,
 
     /* wait for address hit */
     retry = 0;
-    while (!(ptr->STATUS & I2C_STATUS_ADDRHIT_MASK)) {
+    while (i2c_is_addrhit(ptr) == false) {
         if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {
             break;
         }
@@ -750,7 +818,14 @@ hpm_stat_t i2c_master_start_dma_write(I2C_Type *i2c_ptr, const uint16_t device_a
     i2c_ptr->SETUP |= I2C_SETUP_DMAEN_MASK;
 
     i2c_ptr->CMD = I2C_CMD_ISSUE_DATA_TRANSMISSION;
-
+    /* wait for address hit */
+    retry = 0;
+    while (i2c_is_addrhit(i2c_ptr) == false) {
+         if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
+            return status_i2c_no_addr_hit;
+        }
+        retry++;
+    }
     return status_success;
 }
 
@@ -787,7 +862,14 @@ hpm_stat_t i2c_master_start_dma_read(I2C_Type *i2c_ptr, const uint16_t device_ad
     i2c_ptr->SETUP |= I2C_SETUP_DMAEN_MASK;
 
     i2c_ptr->CMD = I2C_CMD_ISSUE_DATA_TRANSMISSION;
-
+    /* wait for address hit */
+    retry = 0;
+    while (i2c_is_addrhit(i2c_ptr) == false) {
+         if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
+            return status_i2c_no_addr_hit;
+        }
+        retry++;
+    }
     return status_success;
 }
 
@@ -844,7 +926,14 @@ hpm_stat_t i2c_master_configure_transfer(I2C_Type *i2c_ptr, const uint16_t devic
                 | I2C_CTRL_DATACNT_SET(I2C_DATACNT_MAP(size));
 
     i2c_ptr->CMD = I2C_CMD_ISSUE_DATA_TRANSMISSION;
-
+    /* wait for address hit */
+    retry = 0;
+    while (i2c_is_addrhit(i2c_ptr) == false) {
+         if (retry > HPM_I2C_DRV_MASTER_ADDRHIT_RETRY_COUNT) {
+            return status_i2c_no_addr_hit;
+        }
+        retry++;
+    }
     return status_success;
 }
 
@@ -930,9 +1019,6 @@ hpm_stat_t i2c_master_seq_transmit_check_ack(I2C_Type *ptr, const uint16_t devic
             }
         }
 
-    }
-    if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {
-        return status_timeout;
     }
 
     if (retry > HPM_I2C_DRV_DEFAULT_RETRY_COUNT) {

@@ -5460,6 +5460,12 @@
     <Register name="PENDING_PENDING3" start="+0x100c" size="0x4">
       <BitField name="INTERRUPT" start="0" size="32"/>
     </Register>
+    <Register name="PENDING_PENDING4" start="+0x1010" size="0x4">
+      <BitField name="INTERRUPT" start="0" size="32"/>
+    </Register>
+    <Register name="PENDING_PENDING5" start="+0x1014" size="0x4">
+      <BitField name="INTERRUPT" start="0" size="32"/>
+    </Register>
     <Register name="TRIGGER_TRIGGER0" start="+0x1080" size="0x4">
       <BitField name="INTERRUPT" start="0" size="32"/>
     </Register>
@@ -5470,6 +5476,12 @@
       <BitField name="INTERRUPT" start="0" size="32"/>
     </Register>
     <Register name="TRIGGER_TRIGGER3" start="+0x108c" size="0x4">
+      <BitField name="INTERRUPT" start="0" size="32"/>
+    </Register>
+    <Register name="TRIGGER_TRIGGER4" start="+0x1090" size="0x4">
+      <BitField name="INTERRUPT" start="0" size="32"/>
+    </Register>
+    <Register name="TRIGGER_TRIGGER5" start="+0x1094" size="0x4">
       <BitField name="INTERRUPT" start="0" size="32"/>
     </Register>
     <Register name="NUMBER" start="+0x1100" size="0x4">
@@ -12567,7 +12579,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH0_LLPOINTER" start="+0x58" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH1_CTRL" start="+0x60" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -12607,7 +12619,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH1_LLPOINTER" start="+0x78" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH2_CTRL" start="+0x80" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -12647,7 +12659,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH2_LLPOINTER" start="+0x98" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH3_CTRL" start="+0xa0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -12687,7 +12699,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH3_LLPOINTER" start="+0xb8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH4_CTRL" start="+0xc0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -12727,7 +12739,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH4_LLPOINTER" start="+0xd8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH5_CTRL" start="+0xe0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -12767,7 +12779,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH5_LLPOINTER" start="+0xf8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH6_CTRL" start="+0x100" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -12807,7 +12819,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH6_LLPOINTER" start="+0x118" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH7_CTRL" start="+0x120" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -12847,7 +12859,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH7_LLPOINTER" start="+0x138" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH8_CTRL" start="+0x140" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -12887,7 +12899,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH8_LLPOINTER" start="+0x158" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH9_CTRL" start="+0x160" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -12927,7 +12939,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH9_LLPOINTER" start="+0x178" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH10_CTRL" start="+0x180" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -12967,7 +12979,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH10_LLPOINTER" start="+0x198" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH11_CTRL" start="+0x1a0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13007,7 +13019,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH11_LLPOINTER" start="+0x1b8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH12_CTRL" start="+0x1c0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13047,7 +13059,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH12_LLPOINTER" start="+0x1d8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH13_CTRL" start="+0x1e0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13087,7 +13099,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH13_LLPOINTER" start="+0x1f8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH14_CTRL" start="+0x200" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13127,7 +13139,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH14_LLPOINTER" start="+0x218" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH15_CTRL" start="+0x220" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13167,7 +13179,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH15_LLPOINTER" start="+0x238" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH16_CTRL" start="+0x240" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13207,7 +13219,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH16_LLPOINTER" start="+0x258" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH17_CTRL" start="+0x260" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13247,7 +13259,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH17_LLPOINTER" start="+0x278" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH18_CTRL" start="+0x280" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13287,7 +13299,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH18_LLPOINTER" start="+0x298" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH19_CTRL" start="+0x2a0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13327,7 +13339,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH19_LLPOINTER" start="+0x2b8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH20_CTRL" start="+0x2c0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13367,7 +13379,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH20_LLPOINTER" start="+0x2d8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH21_CTRL" start="+0x2e0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13407,7 +13419,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH21_LLPOINTER" start="+0x2f8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH22_CTRL" start="+0x300" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13447,7 +13459,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH22_LLPOINTER" start="+0x318" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH23_CTRL" start="+0x320" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13487,7 +13499,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH23_LLPOINTER" start="+0x338" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH24_CTRL" start="+0x340" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13527,7 +13539,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH24_LLPOINTER" start="+0x358" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH25_CTRL" start="+0x360" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13567,7 +13579,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH25_LLPOINTER" start="+0x378" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH26_CTRL" start="+0x380" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13607,7 +13619,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH26_LLPOINTER" start="+0x398" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH27_CTRL" start="+0x3a0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13647,7 +13659,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH27_LLPOINTER" start="+0x3b8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH28_CTRL" start="+0x3c0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13687,7 +13699,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH28_LLPOINTER" start="+0x3d8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH29_CTRL" start="+0x3e0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13727,7 +13739,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH29_LLPOINTER" start="+0x3f8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH30_CTRL" start="+0x400" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13767,7 +13779,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH30_LLPOINTER" start="+0x418" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH31_CTRL" start="+0x420" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13807,7 +13819,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH31_LLPOINTER" start="+0x438" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
   </RegisterGroup>
   <RegisterGroup start="0xf3100000" name="XDMA">
@@ -13885,7 +13897,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH0_LLPOINTER" start="+0x58" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH1_CTRL" start="+0x60" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13925,7 +13937,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH1_LLPOINTER" start="+0x78" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH2_CTRL" start="+0x80" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -13965,7 +13977,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH2_LLPOINTER" start="+0x98" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH3_CTRL" start="+0xa0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14005,7 +14017,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH3_LLPOINTER" start="+0xb8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH4_CTRL" start="+0xc0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14045,7 +14057,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH4_LLPOINTER" start="+0xd8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH5_CTRL" start="+0xe0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14085,7 +14097,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH5_LLPOINTER" start="+0xf8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH6_CTRL" start="+0x100" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14125,7 +14137,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH6_LLPOINTER" start="+0x118" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH7_CTRL" start="+0x120" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14165,7 +14177,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH7_LLPOINTER" start="+0x138" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH8_CTRL" start="+0x140" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14205,7 +14217,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH8_LLPOINTER" start="+0x158" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH9_CTRL" start="+0x160" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14245,7 +14257,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH9_LLPOINTER" start="+0x178" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH10_CTRL" start="+0x180" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14285,7 +14297,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH10_LLPOINTER" start="+0x198" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH11_CTRL" start="+0x1a0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14325,7 +14337,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH11_LLPOINTER" start="+0x1b8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH12_CTRL" start="+0x1c0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14365,7 +14377,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH12_LLPOINTER" start="+0x1d8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH13_CTRL" start="+0x1e0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14405,7 +14417,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH13_LLPOINTER" start="+0x1f8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH14_CTRL" start="+0x200" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14445,7 +14457,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH14_LLPOINTER" start="+0x218" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH15_CTRL" start="+0x220" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14485,7 +14497,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH15_LLPOINTER" start="+0x238" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH16_CTRL" start="+0x240" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14525,7 +14537,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH16_LLPOINTER" start="+0x258" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH17_CTRL" start="+0x260" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14565,7 +14577,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH17_LLPOINTER" start="+0x278" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH18_CTRL" start="+0x280" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14605,7 +14617,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH18_LLPOINTER" start="+0x298" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH19_CTRL" start="+0x2a0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14645,7 +14657,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH19_LLPOINTER" start="+0x2b8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH20_CTRL" start="+0x2c0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14685,7 +14697,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH20_LLPOINTER" start="+0x2d8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH21_CTRL" start="+0x2e0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14725,7 +14737,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH21_LLPOINTER" start="+0x2f8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH22_CTRL" start="+0x300" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14765,7 +14777,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH22_LLPOINTER" start="+0x318" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH23_CTRL" start="+0x320" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14805,7 +14817,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH23_LLPOINTER" start="+0x338" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH24_CTRL" start="+0x340" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14845,7 +14857,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH24_LLPOINTER" start="+0x358" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH25_CTRL" start="+0x360" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14885,7 +14897,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH25_LLPOINTER" start="+0x378" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH26_CTRL" start="+0x380" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14925,7 +14937,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH26_LLPOINTER" start="+0x398" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH27_CTRL" start="+0x3a0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -14965,7 +14977,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH27_LLPOINTER" start="+0x3b8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH28_CTRL" start="+0x3c0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -15005,7 +15017,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH28_LLPOINTER" start="+0x3d8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH29_CTRL" start="+0x3e0" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -15045,7 +15057,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH29_LLPOINTER" start="+0x3f8" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH30_CTRL" start="+0x400" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -15085,7 +15097,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH30_LLPOINTER" start="+0x418" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
     <Register name="CHCTRL_CH31_CTRL" start="+0x420" size="0x4">
       <BitField name="INFINITELOOP" start="31" size="1"/>
@@ -15125,7 +15137,7 @@
       <BitField name="TABLE" start="0" size="32"/>
     </Register>
     <Register name="CHCTRL_CH31_LLPOINTER" start="+0x438" size="0x4">
-      <BitField name="LLPOINTERL" start="3" size="29"/>
+      <BitField name="LLPOINTERL" start="5" size="27"/>
     </Register>
   </RegisterGroup>
   <RegisterGroup start="0xf00cc000" name="PPI">
@@ -21769,8 +21781,7 @@
       <BitField name="WINEN" start="17" size="1"/>
       <BitField name="OPOL" start="16" size="1"/>
       <BitField name="FLTMODE" start="13" size="3"/>
-      <BitField name="FLTLEN_SHIFT" start="9" size="3"/>
-      <BitField name="FLTLEN" start="0" size="9"/>
+      <BitField name="FLTLEN" start="0" size="12"/>
     </Register>
     <Register name="CHANNEL_CHN0_DACCFG" start="+0x4" size="0x4">
       <BitField name="DACCFG" start="0" size="8"/>
@@ -21800,8 +21811,7 @@
       <BitField name="WINEN" start="17" size="1"/>
       <BitField name="OPOL" start="16" size="1"/>
       <BitField name="FLTMODE" start="13" size="3"/>
-      <BitField name="FLTLEN_SHIFT" start="9" size="3"/>
-      <BitField name="FLTLEN" start="0" size="9"/>
+      <BitField name="FLTLEN" start="0" size="12"/>
     </Register>
     <Register name="CHANNEL_CHN1_DACCFG" start="+0x24" size="0x4">
       <BitField name="DACCFG" start="0" size="8"/>
@@ -21833,8 +21843,7 @@
       <BitField name="WINEN" start="17" size="1"/>
       <BitField name="OPOL" start="16" size="1"/>
       <BitField name="FLTMODE" start="13" size="3"/>
-      <BitField name="FLTLEN_SHIFT" start="9" size="3"/>
-      <BitField name="FLTLEN" start="0" size="9"/>
+      <BitField name="FLTLEN" start="0" size="12"/>
     </Register>
     <Register name="CHANNEL_CHN0_DACCFG" start="+0x4" size="0x4">
       <BitField name="DACCFG" start="0" size="8"/>
@@ -21864,8 +21873,7 @@
       <BitField name="WINEN" start="17" size="1"/>
       <BitField name="OPOL" start="16" size="1"/>
       <BitField name="FLTMODE" start="13" size="3"/>
-      <BitField name="FLTLEN_SHIFT" start="9" size="3"/>
-      <BitField name="FLTLEN" start="0" size="9"/>
+      <BitField name="FLTLEN" start="0" size="12"/>
     </Register>
     <Register name="CHANNEL_CHN1_DACCFG" start="+0x24" size="0x4">
       <BitField name="DACCFG" start="0" size="8"/>
@@ -21897,8 +21905,7 @@
       <BitField name="WINEN" start="17" size="1"/>
       <BitField name="OPOL" start="16" size="1"/>
       <BitField name="FLTMODE" start="13" size="3"/>
-      <BitField name="FLTLEN_SHIFT" start="9" size="3"/>
-      <BitField name="FLTLEN" start="0" size="9"/>
+      <BitField name="FLTLEN" start="0" size="12"/>
     </Register>
     <Register name="CHANNEL_CHN0_DACCFG" start="+0x4" size="0x4">
       <BitField name="DACCFG" start="0" size="8"/>
@@ -21928,8 +21935,7 @@
       <BitField name="WINEN" start="17" size="1"/>
       <BitField name="OPOL" start="16" size="1"/>
       <BitField name="FLTMODE" start="13" size="3"/>
-      <BitField name="FLTLEN_SHIFT" start="9" size="3"/>
-      <BitField name="FLTLEN" start="0" size="9"/>
+      <BitField name="FLTLEN" start="0" size="12"/>
     </Register>
     <Register name="CHANNEL_CHN1_DACCFG" start="+0x24" size="0x4">
       <BitField name="DACCFG" start="0" size="8"/>
@@ -21961,8 +21967,7 @@
       <BitField name="WINEN" start="17" size="1"/>
       <BitField name="OPOL" start="16" size="1"/>
       <BitField name="FLTMODE" start="13" size="3"/>
-      <BitField name="FLTLEN_SHIFT" start="9" size="3"/>
-      <BitField name="FLTLEN" start="0" size="9"/>
+      <BitField name="FLTLEN" start="0" size="12"/>
     </Register>
     <Register name="CHANNEL_CHN0_DACCFG" start="+0x4" size="0x4">
       <BitField name="DACCFG" start="0" size="8"/>
@@ -21992,8 +21997,7 @@
       <BitField name="WINEN" start="17" size="1"/>
       <BitField name="OPOL" start="16" size="1"/>
       <BitField name="FLTMODE" start="13" size="3"/>
-      <BitField name="FLTLEN_SHIFT" start="9" size="3"/>
-      <BitField name="FLTLEN" start="0" size="9"/>
+      <BitField name="FLTLEN" start="0" size="12"/>
     </Register>
     <Register name="CHANNEL_CHN1_DACCFG" start="+0x24" size="0x4">
       <BitField name="DACCFG" start="0" size="8"/>
@@ -22044,6 +22048,9 @@
       <BitField name="RX" start="0" size="8"/>
     </Register>
     <Register name="STA" start="+0x10" size="0x4">
+      <BitField name="SFTRST_RX_DONE" start="24" size="1"/>
+      <BitField name="SFTRST_TX_DONE" start="23" size="1"/>
+      <BitField name="SFTRST_CLKGEN_DONE" start="22" size="1"/>
       <BitField name="TX_UD" start="13" size="4"/>
       <BitField name="RX_OV" start="9" size="4"/>
       <BitField name="TX_DN" start="5" size="4"/>
@@ -22154,6 +22161,9 @@
       <BitField name="RX" start="0" size="8"/>
     </Register>
     <Register name="STA" start="+0x10" size="0x4">
+      <BitField name="SFTRST_RX_DONE" start="24" size="1"/>
+      <BitField name="SFTRST_TX_DONE" start="23" size="1"/>
+      <BitField name="SFTRST_CLKGEN_DONE" start="22" size="1"/>
       <BitField name="TX_UD" start="13" size="4"/>
       <BitField name="RX_OV" start="9" size="4"/>
       <BitField name="TX_DN" start="5" size="4"/>
@@ -44699,63 +44709,9 @@
       <BitField name="FRMCNT" start="0" size="32"/>
     </Register>
     <Register name="MMC_IPC_INTR_MASK_RX" start="+0x200" size="0x4">
-      <BitField name="RXICMPEROIM" start="29" size="1"/>
-      <BitField name="RXICMPGOIM" start="28" size="1"/>
-      <BitField name="RXTCPEROIM" start="27" size="1"/>
-      <BitField name="RXTCPGOIM" start="26" size="1"/>
-      <BitField name="RXUDPEROIM" start="25" size="1"/>
-      <BitField name="RXUDPGOIM" start="24" size="1"/>
-      <BitField name="RXIPV6NOPAYOIM" start="23" size="1"/>
-      <BitField name="RXIPV6HEROIM" start="22" size="1"/>
-      <BitField name="RXIPV6GOIM" start="21" size="1"/>
-      <BitField name="RXIPV4UDSBLOIM" start="20" size="1"/>
-      <BitField name="RXIPV4FRAGOIM" start="19" size="1"/>
-      <BitField name="RXIPV4NOPAYOIM" start="18" size="1"/>
-      <BitField name="RXIPV4HEROIM" start="17" size="1"/>
-      <BitField name="RXIPV4GOIM" start="16" size="1"/>
-      <BitField name="RXICMPERFIM" start="13" size="1"/>
-      <BitField name="RXICMPGFIM" start="12" size="1"/>
-      <BitField name="RXTCPERFIM" start="11" size="1"/>
-      <BitField name="RXTCPGFIM" start="10" size="1"/>
-      <BitField name="RXUDPERFIM" start="9" size="1"/>
-      <BitField name="RXUDPGFIM" start="8" size="1"/>
-      <BitField name="RXIPV6NOPAYFIM" start="7" size="1"/>
-      <BitField name="RXIPV6HERFIM" start="6" size="1"/>
-      <BitField name="RXIPV6GFIM" start="5" size="1"/>
-      <BitField name="RXIPV4UDSBLFIM" start="4" size="1"/>
-      <BitField name="RXIPV4FRAGFIM" start="3" size="1"/>
-      <BitField name="RXIPV4NOPAYFIM" start="2" size="1"/>
-      <BitField name="RXIPV4HERFIM" start="1" size="1"/>
       <BitField name="RXIPV4GFIM" start="0" size="1"/>
     </Register>
     <Register name="MMC_IPC_INTR_RX" start="+0x208" size="0x4">
-      <BitField name="RXICMPEROIS" start="29" size="1"/>
-      <BitField name="RXICMPGOIS" start="28" size="1"/>
-      <BitField name="RXTCPEROIS" start="27" size="1"/>
-      <BitField name="RXTCPGOIS" start="26" size="1"/>
-      <BitField name="RXUDPEROIS" start="25" size="1"/>
-      <BitField name="RXUDPGOIS" start="24" size="1"/>
-      <BitField name="RXIPV6NOPAYOIS" start="23" size="1"/>
-      <BitField name="RXIPV6HEROIS" start="22" size="1"/>
-      <BitField name="RXIPV6GOIS" start="21" size="1"/>
-      <BitField name="RXIPV4UDSBLOIS" start="20" size="1"/>
-      <BitField name="RXIPV4FRAGOIS" start="19" size="1"/>
-      <BitField name="RXIPV4NOPAYOIS" start="18" size="1"/>
-      <BitField name="RXIPV4HEROIS" start="17" size="1"/>
-      <BitField name="RXIPV4GOIS" start="16" size="1"/>
-      <BitField name="RXICMPERFIS" start="13" size="1"/>
-      <BitField name="RXICMPGFIS" start="12" size="1"/>
-      <BitField name="RXTCPERFIS" start="11" size="1"/>
-      <BitField name="RXTCPGFIS" start="10" size="1"/>
-      <BitField name="RXUDPERFIS" start="9" size="1"/>
-      <BitField name="RXUDPGFIS" start="8" size="1"/>
-      <BitField name="RXIPV6NOPAYFIS" start="7" size="1"/>
-      <BitField name="RXIPV6HERFIS" start="6" size="1"/>
-      <BitField name="RXIPV6GFIS" start="5" size="1"/>
-      <BitField name="RXIPV4UDSBLFIS" start="4" size="1"/>
-      <BitField name="RXIPV4FRAGFIS" start="3" size="1"/>
-      <BitField name="RXIPV4NOPAYFIS" start="2" size="1"/>
-      <BitField name="RXIPV4HERFIS" start="1" size="1"/>
       <BitField name="RXIPV4GFIS" start="0" size="1"/>
     </Register>
     <Register name="RXIPV4_GD_FMS" start="+0x210" size="0x4">
@@ -45457,7 +45413,6 @@
       <BitField name="HIT" start="24" size="1"/>
       <BitField name="UTAG" start="21" size="3"/>
       <BitField name="HIT_VLAN" start="20" size="1"/>
-      <BitField name="DROP" start="19" size="1"/>
       <BitField name="QUEUE" start="16" size="3"/>
       <BitField name="DEST" start="0" size="16"/>
     </Register>
@@ -45479,21 +45434,18 @@
     <Register name="LU_MAIN_INTF_ACTION" start="+0x20" size="0x4">
       <BitField name="UTAG" start="22" size="3"/>
       <BitField name="QSEL" start="20" size="2"/>
-      <BitField name="DROP" start="19" size="1"/>
       <BitField name="QUEUE" start="16" size="3"/>
       <BitField name="DEST" start="0" size="16"/>
     </Register>
     <Register name="LU_MAIN_BC_ACTION" start="+0x28" size="0x4">
       <BitField name="UTAG" start="22" size="3"/>
       <BitField name="QSEL" start="20" size="2"/>
-      <BitField name="DROP" start="19" size="1"/>
       <BitField name="QUEUE" start="16" size="3"/>
       <BitField name="DEST" start="0" size="16"/>
     </Register>
     <Register name="LU_MAIN_NN_ACTION" start="+0x30" size="0x4">
       <BitField name="UTAG" start="22" size="3"/>
       <BitField name="QSEL" start="20" size="2"/>
-      <BitField name="DROP" start="19" size="1"/>
       <BitField name="QUEUE" start="16" size="3"/>
       <BitField name="DEST" start="0" size="16"/>
     </Register>
@@ -45515,15 +45467,15 @@
       <BitField name="DEPTH" start="8" size="8"/>
       <BitField name="WORDLEN_BYTE" start="0" size="8"/>
     </Register>
-    <Register name="APB2AXI_CAM_REQDATA_0" start="+0x120" size="0x4">
+    <Register name="APB2AXIS_CAM_REQDATA_0" start="+0x120" size="0x4">
       <BitField name="ENTRY_NUM" start="16" size="16"/>
       <BitField name="TYPE" start="8" size="2"/>
       <BitField name="CH" start="0" size="1"/>
     </Register>
-    <Register name="APB2AXI_CAM_REQDATA_1" start="+0x124" size="0x4">
+    <Register name="APB2AXIS_CAM_REQDATA_1" start="+0x124" size="0x4">
       <BitField name="DESTMAC_LO_PORT_VEC" start="0" size="32"/>
     </Register>
-    <Register name="APB2AXI_CAM_REQDATA_2" start="+0x128" size="0x4">
+    <Register name="APB2AXIS_CAM_REQDATA_2" start="+0x128" size="0x4">
       <BitField name="VID" start="16" size="12"/>
       <BitField name="DESTMAC_HI" start="0" size="16"/>
     </Register>
@@ -45548,7 +45500,6 @@
     <Register name="APB2AXIS_ALMEM_REQDATA_0" start="+0x220" size="0x4">
       <BitField name="UTAG" start="22" size="3"/>
       <BitField name="QSEL" start="20" size="2"/>
-      <BitField name="DROP" start="19" size="1"/>
       <BitField name="QUEUE" start="16" size="3"/>
       <BitField name="DEST" start="0" size="16"/>
     </Register>
@@ -45578,7 +45529,6 @@
     <Register name="AXIS2APB_ALMEM_RESPDATA_0" start="+0x2a0" size="0x4">
       <BitField name="UTAG" start="22" size="3"/>
       <BitField name="QSEL" start="20" size="2"/>
-      <BitField name="DROP" start="19" size="1"/>
       <BitField name="QUEUE" start="16" size="3"/>
       <BitField name="DEST" start="0" size="16"/>
     </Register>
@@ -45650,7 +45600,6 @@
       <BitField name="HIT" start="24" size="1"/>
       <BitField name="UTAG" start="21" size="3"/>
       <BitField name="HIT_VLAN" start="20" size="1"/>
-      <BitField name="DROP" start="19" size="1"/>
       <BitField name="QUEUE" start="16" size="3"/>
       <BitField name="DEST" start="0" size="16"/>
     </Register>
@@ -50596,10 +50545,6 @@
       <BitField name="DEI" start="12" size="1"/>
       <BitField name="PVID" start="0" size="12"/>
     </Register>
-    <Register name="TSNPORT_PORT1_SW_CTRL_PORT_MAIN_ENNABLE" start="+0x30004" size="0x4">
-      <BitField name="EN_SF" start="1" size="1"/>
-      <BitField name="EN_QCI" start="0" size="1"/>
-    </Register>
     <Register name="TSNPORT_PORT1_SW_CTRL_EGRESS_ECSR_QDROP" start="+0x32000" size="0x4">
       <BitField name="DIS_VEC" start="24" size="8"/>
       <BitField name="EN_VEC" start="0" size="24"/>
@@ -55060,10 +55005,6 @@
       <BitField name="PCP" start="13" size="3"/>
       <BitField name="DEI" start="12" size="1"/>
       <BitField name="PVID" start="0" size="12"/>
-    </Register>
-    <Register name="TSNPORT_PORT2_SW_CTRL_PORT_MAIN_ENNABLE" start="+0x50004" size="0x4">
-      <BitField name="EN_SF" start="1" size="1"/>
-      <BitField name="EN_QCI" start="0" size="1"/>
     </Register>
     <Register name="TSNPORT_PORT2_SW_CTRL_EGRESS_ECSR_QDROP" start="+0x52000" size="0x4">
       <BitField name="DIS_VEC" start="24" size="8"/>
@@ -59526,10 +59467,6 @@
       <BitField name="DEI" start="12" size="1"/>
       <BitField name="PVID" start="0" size="12"/>
     </Register>
-    <Register name="TSNPORT_PORT3_SW_CTRL_PORT_MAIN_ENNABLE" start="+0x70004" size="0x4">
-      <BitField name="EN_SF" start="1" size="1"/>
-      <BitField name="EN_QCI" start="0" size="1"/>
-    </Register>
     <Register name="TSNPORT_PORT3_SW_CTRL_EGRESS_ECSR_QDROP" start="+0x72000" size="0x4">
       <BitField name="DIS_VEC" start="24" size="8"/>
       <BitField name="EN_VEC" start="0" size="24"/>
@@ -60758,19 +60695,22 @@
       <BitField name="MAC_SPEED" start="30" size="1"/>
       <BitField name="PHY_OFFSET_VAL" start="24" size="5"/>
       <BitField name="PORT2_RMII_EN" start="23" size="1"/>
+      <BitField name="PORT2_TX_SHIFT" start="16" size="2"/>
       <BitField name="PORT1_RMII_EN" start="15" size="1"/>
+      <BitField name="PORT1_TX_SHIFT" start="8" size="2"/>
       <BitField name="PORT0_RMII_EN" start="7" size="1"/>
+      <BitField name="PORT0_TX_SHIFT" start="0" size="2"/>
     </Register>
     <Register name="PHY_CFG1" start="+0x1f014" size="0x4">
       <BitField name="RMII_REFCLK_SEL" start="8" size="3"/>
       <BitField name="REFCK_25M_INV" start="7" size="1"/>
-      <BitField name="RMII_P2_RXCK_REFCLK_OE" start="6" size="1"/>
-      <BitField name="RMII_P1_RXCK_REFCLK_OE" start="5" size="1"/>
-      <BitField name="RMII_P0_RXCK_REFCLK_OE" start="4" size="1"/>
+      <BitField name="RMII_P2_TXCK_REFCLK_OE" start="6" size="1"/>
+      <BitField name="RMII_P1_TXCK_REFCLK_OE" start="5" size="1"/>
+      <BitField name="RMII_P0_TXCK_REFCLK_OE" start="4" size="1"/>
       <BitField name="REFCK_25M_OE" start="3" size="1"/>
-      <BitField name="RMII_P2_TXCK_REFCLK_OE" start="2" size="1"/>
-      <BitField name="RMII_P1_TXCK_REFCLK_OE" start="1" size="1"/>
-      <BitField name="RMII_P0_TXCK_REFCLK_OE" start="0" size="1"/>
+      <BitField name="RMII_P2_RXCK_REFCLK_OE" start="2" size="1"/>
+      <BitField name="RMII_P1_RXCK_REFCLK_OE" start="1" size="1"/>
+      <BitField name="RMII_P0_RXCK_REFCLK_OE" start="0" size="1"/>
     </Register>
     <Register name="GPIO_CTRL" start="+0x1f020" size="0x4">
       <BitField name="SW_LATCH_GPI" start="31" size="1"/>

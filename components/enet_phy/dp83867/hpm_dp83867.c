@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 HPMicro
+ * Copyright (c) 2021-2025 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -17,12 +17,14 @@
  * Internal API
  *---------------------------------------------------------------------
  */
-bool dp83867_check_id(ENET_Type *ptr)
+static bool dp83867_check_id(ENET_Type *ptr, uint32_t phy_addr)
 {
     uint16_t id1, id2;
 
-    id1 = enet_read_phy(ptr, DP83867_ADDR, DP83867_PHYIDR1);
-    id2 = enet_read_phy(ptr, DP83867_ADDR, DP83867_PHYIDR2);
+    if (enet_read_phy(ptr, phy_addr, DP83867_PHYIDR1, &id1) != status_success ||
+        enet_read_phy(ptr, phy_addr, DP83867_PHYIDR2, &id2) != status_success) {
+        return false;
+    }
 
     if (DP83867_PHYIDR1_OUI_MSB_GET(id1) == DP83867_ID1 && DP83867_PHYIDR2_OUI_LSB_GET(id2) == DP83867_ID2) {
         return true;
@@ -31,50 +33,77 @@ bool dp83867_check_id(ENET_Type *ptr)
     }
 }
 
-static void dp83867_write_phy_ext(ENET_Type *ptr, uint32_t phy_addr, uint32_t addr, uint32_t data)
+static hpm_stat_t dp83867_write_phy_ext(ENET_Type *ptr, uint32_t phy_addr, uint32_t addr, uint32_t data)
 {
+    hpm_stat_t stat;
+
     /* set the control register for register address */
-    enet_write_phy(ptr, phy_addr, DP83867_REGCR,  DP83867_REGCR_FUNCTION_SET(0) | DP83867_REGCR_DEVAD_SET(0x1f));
+    stat = enet_write_phy(ptr, phy_addr, DP83867_REGCR, DP83867_REGCR_FUNCTION_SET(0) | DP83867_REGCR_DEVAD_SET(0x1f));
+    if (stat != status_success) {
+        return stat;
+    }
 
     /* write the specified register address */
-    enet_write_phy(ptr, phy_addr, DP83867_ADDAR, addr);
+    stat = enet_write_phy(ptr, phy_addr, DP83867_ADDAR, addr);
+    if (stat != status_success) {
+        return stat;
+    }
 
     /* set the control register for register data */
-    enet_write_phy(ptr, phy_addr, DP83867_REGCR, DP83867_REGCR_FUNCTION_SET(1) | DP83867_REGCR_DEVAD_SET(0x1f));
+    stat = enet_write_phy(ptr, phy_addr, DP83867_REGCR, DP83867_REGCR_FUNCTION_SET(1) | DP83867_REGCR_DEVAD_SET(0x1f));
+    if (stat != status_success) {
+        return stat;
+    }
 
     /* write the specified register data */
-    enet_write_phy(ptr, phy_addr, DP83867_ADDAR, data);
+    return enet_write_phy(ptr, phy_addr, DP83867_ADDAR, data);
 }
 
-static uint16_t dp83867_read_phy_ext(ENET_Type *ptr, uint32_t phy_addr, uint32_t addr)
+static hpm_stat_t dp83867_read_phy_ext(ENET_Type *ptr, uint32_t phy_addr, uint32_t addr, uint16_t *data)
 {
+    hpm_stat_t stat;
+
     /* set the control register for register address */
-    enet_write_phy(ptr, phy_addr, DP83867_REGCR, DP83867_REGCR_FUNCTION_SET(0) | DP83867_REGCR_DEVAD_SET(0x1f));
+    stat = enet_write_phy(ptr, phy_addr, DP83867_REGCR, DP83867_REGCR_FUNCTION_SET(0) | DP83867_REGCR_DEVAD_SET(0x1f));
+    if (stat != status_success) {
+        return stat;
+    }
 
     /* write the specified register address */
-    enet_write_phy(ptr, phy_addr, DP83867_ADDAR, addr);
+    stat = enet_write_phy(ptr, phy_addr, DP83867_ADDAR, addr);
+    if (stat != status_success) {
+        return stat;
+    }
 
     /* set the control register for register data */
-    enet_write_phy(ptr, phy_addr, DP83867_REGCR, DP83867_REGCR_FUNCTION_SET(1) | DP83867_REGCR_DEVAD_SET(0x1f));
+    stat = enet_write_phy(ptr, phy_addr, DP83867_REGCR, DP83867_REGCR_FUNCTION_SET(1) | DP83867_REGCR_DEVAD_SET(0x1f));
+    if (stat != status_success) {
+        return stat;
+    }
 
     /* read the specified register data */
-    return enet_read_phy(ptr, phy_addr, DP83867_ADDAR);
+    return enet_read_phy(ptr, phy_addr, DP83867_ADDAR, data);
 }
 /*---------------------------------------------------------------------
  * API
  *---------------------------------------------------------------------
  */
-void dp83867_reset(ENET_Type *ptr)
+bool dp83867_reset(ENET_Type *ptr, uint32_t phy_addr)
 {
     uint16_t data;
+    uint32_t retry_cnt = ENET_PHY_SW_RESET_RETRY_CNT;
 
     /* PHY reset */
-    enet_write_phy(ptr, DP83867_ADDR, DP83867_BMCR, DP83867_BMCR_RESET_SET(1));
+    enet_write_phy(ptr, phy_addr, DP83867_BMCR, DP83867_BMCR_RESET_SET(1));
 
     /* wait until the reset is completed */
     do {
-        data = enet_read_phy(ptr, DP83867_ADDR, DP83867_BMCR);
-    } while (DP83867_BMCR_RESET_GET(data));
+        if (enet_read_phy(ptr, phy_addr, DP83867_BMCR, &data) != status_success) {
+            return false;
+        }
+    } while (DP83867_BMCR_RESET_GET(data) && --retry_cnt);
+
+    return retry_cnt > 0 ? true : false;
 }
 
 void dp83867_basic_mode_default_config(ENET_Type *ptr, dp83867_config_t *config)
@@ -91,7 +120,7 @@ void dp83867_basic_mode_default_config(ENET_Type *ptr, dp83867_config_t *config)
     #endif
 }
 
-bool dp83867_basic_mode_init(ENET_Type *ptr, dp83867_config_t *config)
+bool dp83867_basic_mode_init(ENET_Type *ptr, uint32_t phy_addr, dp83867_config_t *config)
 {
     uint16_t data = 0;
 
@@ -109,32 +138,71 @@ bool dp83867_basic_mode_init(ENET_Type *ptr, dp83867_config_t *config)
     }
 
     /* check the id of dp83867 */
-    if (dp83867_check_id(ptr) == false) {
+    if (dp83867_check_id(ptr, phy_addr) == false) {
         return false;
     }
 
-    enet_write_phy(ptr, DP83867_ADDR, DP83867_BMCR, data);
-    data = enet_read_phy(ptr, DP83867_ADDR, DP83867_BMCR);
+    enet_write_phy(ptr, phy_addr, DP83867_BMCR, data);
+    enet_read_phy(ptr, phy_addr, DP83867_BMCR, &data);
 
     return true;
 }
 
-void dp83867_get_phy_status(ENET_Type *ptr, enet_phy_status_t *status)
+hpm_stat_t dp83867_get_phy_status(ENET_Type *ptr, uint32_t phy_addr, enet_phy_status_t *status)
 {
-    uint16_t data;
+    uint16_t data, bmcr;
+    uint8_t speed;
+    hpm_stat_t stat;
 
-    data = enet_read_phy(ptr, DP83867_ADDR, DP83867_PHYSTS);
+    if (status == NULL) {
+        return status_invalid_argument;
+    }
+
+    status->enet_phy_speed_valid = 0U;
+
+    stat = enet_read_phy(ptr, phy_addr, DP83867_PHYSTS, &data);
+    if (stat != status_success) {
+        status->enet_phy_link = enet_phy_link_unknown;
+        return stat;
+    }
     status->enet_phy_link = DP83867_PHYSTS_LINK_STATUS_GET(data);
+
+    if (status->enet_phy_link == 0U) {
+        return status_success;
+    }
+
+    stat = enet_read_phy(ptr, phy_addr, DP83867_BMCR, &bmcr);
+    if (stat != status_success) {
+        status->enet_phy_link = enet_phy_link_unknown;
+        return stat;
+    }
+    if (DP83867_BMCR_ANE_GET(bmcr) == 0U) {
+        speed = (uint8_t)((DP83867_BMCR_SPEED1_GET(bmcr) << 1U) | DP83867_BMCR_SPEED0_GET(bmcr));
+        status->enet_phy_speed = speed == 0U ? enet_phy_port_speed_10mbps : speed == 1U ? enet_phy_port_speed_100mbps : enet_phy_port_speed_1000mbps;
+        status->enet_phy_duplex = DP83867_BMCR_DUPLEX_GET(bmcr);
+        status->enet_phy_speed_valid = 1U;
+        return status_success;
+    }
+
+    if (DP83867_PHYSTS_SPEED_DUPLEX_RESOLVED_GET(data) == 0U) {
+        return status_success;
+    }
+
     status->enet_phy_speed = DP83867_PHYSTS_SPEED_SELECTION_GET(data) == 0 ? enet_phy_port_speed_10mbps : DP83867_PHYSTS_SPEED_SELECTION_GET(data) == 1 ? enet_phy_port_speed_100mbps : enet_phy_port_speed_1000mbps;
     status->enet_phy_duplex = DP83867_PHYSTS_DUPLEX_MODE_GET(data);
+    status->enet_phy_speed_valid = 1U;
+
+    return status_success;
 }
 
-void dp83867_set_mdi_crossover_mode(ENET_Type *ptr, enet_phy_crossover_mode_t mode)
+void dp83867_set_mdi_crossover_mode(ENET_Type *ptr, uint32_t phy_addr, enet_phy_crossover_mode_t mode)
 {
     uint16_t data;
 
-    data = dp83867_read_phy_ext(ptr, DP83867_ADDR, DP83867_PHYCR);
+    if (dp83867_read_phy_ext(ptr, phy_addr, DP83867_PHYCR, &data) != status_success) {
+        return;
+    }
     data &= ~DP83867_PHYCR_MDI_CROSSOVER_MASK;
     data |= DP83867_PHYCR_MDI_CROSSOVER_SET(mode);
-    dp83867_write_phy_ext(ptr, DP83867_ADDR, DP83867_PHYCR, data);
+    (void)dp83867_write_phy_ext(ptr, phy_addr, DP83867_PHYCR, data);
 }

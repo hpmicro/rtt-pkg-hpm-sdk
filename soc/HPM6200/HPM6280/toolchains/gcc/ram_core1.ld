@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 HPMicro
+ * Copyright (c) 2021-2026 HPMicro
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
@@ -11,8 +11,8 @@ HEAP_SIZE = _heap_size;
 MEMORY
 {
     ILM (wx) : ORIGIN = 0x00020000, LENGTH = 128K
-    DLM (w) : ORIGIN = 0x000A0000, LENGTH = 96K
-    NONCACHEABLE_RAM (wx) : ORIGIN = 0x000B8000, LENGTH = 32K
+    DLM (w) : ORIGIN = 0x000A0000, LENGTH = 128K - _noncacheable_size
+    NONCACHEABLE_RAM (wx) : ORIGIN = 0x000C0000 - _noncacheable_size, LENGTH = _noncacheable_size
     SHARE_RAM (w) : ORIGIN = 0x010BC000, LENGTH = 16K
 }
 
@@ -111,8 +111,7 @@ SECTIONS
     PROVIDE (etext = .);
 
     __data_load_addr__ = etext;
-    .data : AT(__data_load_addr__) {
-        . = ALIGN(8);
+    .data : AT(__data_load_addr__) ALIGN(8) {
         __data_start__ = .;
         __global_pointer$ = . + 0x800;
         *(.data)
@@ -164,8 +163,7 @@ SECTIONS
     } > DLM
 
     __fast_load_addr__ = etext + SIZEOF(.data);
-    .fast : AT(__fast_load_addr__) {
-        . = ALIGN(8);
+    .fast : AT(__fast_load_addr__) ALIGN(8) {
         PROVIDE(__ramfunc_start__ = .);
         *(.fast)
         *(.fast.*)
@@ -174,8 +172,7 @@ SECTIONS
     } > ILM
 
     __tdata_load_addr__ = etext + SIZEOF(.data) + SIZEOF(.fast);
-    .tdata : AT(__tdata_load_addr__) {
-        . = ALIGN(8);
+    .tdata : AT(__tdata_load_addr__) ALIGN(8) {
         PROVIDE(__tdata_start__ = .);
         *(.tdata)
         *(.tdata.*)
@@ -197,23 +194,21 @@ SECTIONS
     } > DLM
 
     __noncacheable_init_load_addr__ = etext + SIZEOF(.data) + SIZEOF(.fast) + SIZEOF(.tdata);
-    .noncacheable.init : AT(__noncacheable_init_load_addr__) {
-        . = ALIGN(8);
+    .noncacheable.init : AT(__noncacheable_init_load_addr__) ALIGN(8) {
         __noncacheable_init_start__ = .;
         KEEP(*(.noncacheable.init))
         KEEP(*(.noncacheable.init.*))
-        __noncacheable_init_end__ = .;
         . = ALIGN(8);
+        __noncacheable_init_end__ = .;
     } > NONCACHEABLE_RAM
 
     __fast_ram_init_load_addr__ = etext + SIZEOF(.data) + SIZEOF(.fast) + SIZEOF(.tdata) + SIZEOF(.noncacheable.init);
-    .fast_ram.init : AT(__fast_ram_init_load_addr__) {
-        . = ALIGN(8);
+    .fast_ram.init : AT(__fast_ram_init_load_addr__) ALIGN(8) {
         __fast_ram_init_start__ = .;
         KEEP(*(.fast_ram.init))
         KEEP(*(.fast_ram.init.*))
-        __fast_ram_init_end__ = .;
         . = ALIGN(8);
+        __fast_ram_init_end__ = .;
     } > DLM
 
     .noncacheable (NOLOAD) : {
@@ -221,11 +216,12 @@ SECTIONS
         KEEP(*(.noncacheable))  /* Legacy sections, kept for backwards compatibility */
         KEEP(*(.noncacheable.non_init))
         KEEP(*(.noncacheable.non_init.*))
+        . = ALIGN(8);
         __noncacheable_bss_start__ = .;
         KEEP(*(.noncacheable.bss))
         KEEP(*(.noncacheable.bss.*))
-        __noncacheable_bss_end__ = .;
         . = ALIGN(8);
+        __noncacheable_bss_end__ = .;
     } > NONCACHEABLE_RAM
 
     .sh_mem (NOLOAD) : {
@@ -260,17 +256,19 @@ SECTIONS
         KEEP(*(.fast_ram))  /* Legacy sections, kept for backwards compatibility */
         KEEP(*(.fast_ram.non_init))
         KEEP(*(.fast_ram.non_init.*))
+        . = ALIGN(8);
         __fast_ram_bss_start__ = .;
         KEEP(*(.fast_ram.bss))
         KEEP(*(.fast_ram.bss.*))
-        __fast_ram_bss_end__ = .;
         . = ALIGN(8);
+        __fast_ram_bss_end__ = .;
     } > DLM
 
     .heap (NOLOAD) : {
         . = ALIGN(8);
         __heap_start__ = .;
         . += HEAP_SIZE;
+        . = ALIGN(8);
         __heap_end__ = .;
     } > DLM
 

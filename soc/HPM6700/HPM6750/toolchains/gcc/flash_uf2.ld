@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023,2025 HPMicro
+ * Copyright (c) 2021-2023,2025,2026 HPMicro
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
@@ -14,8 +14,8 @@ MEMORY
     FLASH (rx) : ORIGIN = 0x80000000 + UF2_BOOTLOADER_RESERVED_LENGTH, LENGTH = _flash_size - UF2_BOOTLOADER_RESERVED_LENGTH
     ILM (wx) : ORIGIN = 0x00000000, LENGTH = 256K
     DLM (w) : ORIGIN = 0x00080000, LENGTH = 256K
-    AXI_SRAM (wx) : ORIGIN = 0x01080000, LENGTH = 512K    /* AXI SRAM0 */
-    NONCACHEABLE_RAM (wx) : ORIGIN = 0x01100000, LENGTH = 256K    /* AXI SRAM1 */
+    AXI_SRAM (wx) : ORIGIN = 0x01080000, LENGTH = 768K - _noncacheable_size
+    NONCACHEABLE_RAM (wx) : ORIGIN = 0x01140000 - _noncacheable_size, LENGTH = _noncacheable_size
     SHARE_RAM (w) : ORIGIN = 0x0117C000, LENGTH = 16K
     AHB_SRAM (w) : ORIGIN = 0xF0300000, LENGTH = 32k
     APB_SRAM (w): ORIGIN = 0xF40F0000, LENGTH = 8k
@@ -30,8 +30,7 @@ SECTIONS
     } > FLASH
 
     __vector_load_addr__ = ADDR(.start) + SIZEOF(.start);
-    .vectors ORIGIN(ILM) : AT(__vector_load_addr__) {
-        . = ALIGN(8);
+    .vectors ORIGIN(ILM) : AT(__vector_load_addr__) ALIGN(8) {
         __vector_ram_start__ = .;
         KEEP(*(.vector_table))
         KEEP(*(.isr_vector))
@@ -115,8 +114,7 @@ SECTIONS
     PROVIDE (etext = .);
 
     __data_load_addr__ = etext;
-    .data : AT(__data_load_addr__) {
-        . = ALIGN(8);
+    .data : AT(__data_load_addr__) ALIGN(8) {
         __data_start__ = .;
         __global_pointer$ = . + 0x800;
         *(.data)
@@ -167,8 +165,7 @@ SECTIONS
     } > AXI_SRAM
 
     __fast_load_addr__ = etext + SIZEOF(.data);
-    .fast : AT(__fast_load_addr__) {
-        . = ALIGN(8);
+    .fast : AT(__fast_load_addr__) ALIGN(8) {
         PROVIDE(__ramfunc_start__ = .);
         *(.fast)
         *(.fast.*)
@@ -183,8 +180,7 @@ SECTIONS
     } > ILM
 
     __tdata_load_addr__ = etext + SIZEOF(.data) + SIZEOF(.fast);
-    .tdata : AT(__tdata_load_addr__) {
-        . = ALIGN(8);
+    .tdata : AT(__tdata_load_addr__) ALIGN(8) {
         PROVIDE(__tdata_start__ = .);
         *(.tdata)
         *(.tdata.*)
@@ -206,23 +202,21 @@ SECTIONS
     } > AXI_SRAM
 
     __noncacheable_init_load_addr__ = etext + SIZEOF(.data) + SIZEOF(.fast) + SIZEOF(.tdata);
-    .noncacheable.init : AT(__noncacheable_init_load_addr__) {
-        . = ALIGN(8);
+    .noncacheable.init : AT(__noncacheable_init_load_addr__) ALIGN(8) {
         __noncacheable_init_start__ = .;
         KEEP(*(.noncacheable.init))
         KEEP(*(.noncacheable.init.*))
-        __noncacheable_init_end__ = .;
         . = ALIGN(8);
+        __noncacheable_init_end__ = .;
     } > NONCACHEABLE_RAM
 
     __fast_ram_init_load_addr__ = etext + SIZEOF(.data) + SIZEOF(.fast) + SIZEOF(.tdata) + SIZEOF(.noncacheable.init);
-    .fast_ram.init : AT(__fast_ram_init_load_addr__) {
-        . = ALIGN(8);
+    .fast_ram.init : AT(__fast_ram_init_load_addr__) ALIGN(8) {
         __fast_ram_init_start__ = .;
         KEEP(*(.fast_ram.init))
         KEEP(*(.fast_ram.init.*))
-        __fast_ram_init_end__ = .;
         . = ALIGN(8);
+        __fast_ram_init_end__ = .;
     } > DLM
 
     .bss (NOLOAD) : {
@@ -252,11 +246,12 @@ SECTIONS
         KEEP(*(.noncacheable))  /* Legacy sections, kept for backwards compatibility */
         KEEP(*(.noncacheable.non_init))
         KEEP(*(.noncacheable.non_init.*))
+        . = ALIGN(8);
         __noncacheable_bss_start__ = .;
         KEEP(*(.noncacheable.bss))
         KEEP(*(.noncacheable.bss.*))
-        __noncacheable_bss_end__ = .;
         . = ALIGN(8);
+        __noncacheable_bss_end__ = .;
     } > NONCACHEABLE_RAM
 
     .ahb_sram (NOLOAD) : {
@@ -279,17 +274,19 @@ SECTIONS
         KEEP(*(.fast_ram))  /* Legacy sections, kept for backwards compatibility */
         KEEP(*(.fast_ram.non_init))
         KEEP(*(.fast_ram.non_init.*))
+        . = ALIGN(8);
         __fast_ram_bss_start__ = .;
         KEEP(*(.fast_ram.bss))
         KEEP(*(.fast_ram.bss.*))
-        __fast_ram_bss_end__ = .;
         . = ALIGN(8);
+        __fast_ram_bss_end__ = .;
     } > DLM
 
     .heap (NOLOAD) : {
         . = ALIGN(8);
         __heap_start__ = .;
         . += HEAP_SIZE;
+        . = ALIGN(8);
         __heap_end__ = .;
     } > DLM
 

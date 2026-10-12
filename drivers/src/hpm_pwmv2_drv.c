@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 HPMicro
+ * Copyright (c) 2023-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -19,12 +19,12 @@ void pwmv2_deinit(PWMV2_Type *pwm_x)
     pwm_x->IRQ_EN = 0;
     pwm_x->DMA_EN = 0;
     pwm_x->IRQ_STS = pwm_x->IRQ_STS;
-    pwm_x->IRQ_STS_CMP = 0;
-    pwm_x->IRQ_STS_RELOAD = 0;
-    pwm_x->IRQ_STS_CAP_POS = 0;
-    pwm_x->IRQ_STS_CAP_NEG = 0;
-    pwm_x->IRQ_STS_FAULT = 0;
-    pwm_x->IRQ_STS_BURSTEND = 0;
+    pwm_x->IRQ_STS_CMP = pwm_x->IRQ_STS_CMP;
+    pwm_x->IRQ_STS_RELOAD = pwm_x->IRQ_STS_RELOAD;
+    pwm_x->IRQ_STS_CAP_POS = pwm_x->IRQ_STS_CAP_POS;
+    pwm_x->IRQ_STS_CAP_NEG = pwm_x->IRQ_STS_CAP_NEG;
+    pwm_x->IRQ_STS_FAULT = pwm_x->IRQ_STS_FAULT;
+    pwm_x->IRQ_STS_BURSTEND = pwm_x->IRQ_STS_BURSTEND;
     pwm_x->GLB_CTRL = 0;
     pwm_x->GLB_CTRL2 = 0;
     pwm_x->CNT_GLBCFG = 0;
@@ -41,7 +41,7 @@ void pwmv2_deinit(PWMV2_Type *pwm_x)
         pwm_x->PWM[i].CFG1 = PWMV2_PWM_CFG1_FORCE_TIME_SET(pwm_force_none);
         pwm_x->PWM[i].DEAD_AREA = 0;
     }
-    for (uint8_t i = 0; i < PWMV2_SOC_CAL_COUNT_MAX; i++) {
+    for (uint8_t i = 0; i < PWM_SOC_CALCULATE_MAX_COUNT; i++) {
         pwm_x->CAL[i].CFG0 = 0;
         pwm_x->CAL[i].CFG1 = 0;
     }
@@ -55,7 +55,7 @@ void pwmv2_config_cmp(PWMV2_Type *pwm_x, uint8_t index, pwmv2_cmp_config_t *conf
         pwmv2_select_cmp_trigmux(pwm_x, index, config->update_trigger_index);
     }
     if (index >= PWM_CMP_UNABLE_OUTPUT_INDEX) {
-        pwmv2_cmp_select_counter(pwm_x, index, config->cmp_source_index);
+        pwmv2_cmp_select_counter(pwm_x, index, config->cmp_use_counter);
     }
     if (config->cmp_source == cmp_value_from_shadow_val) {
         pwmv2_shadow_register_unlock(pwm_x);
@@ -82,7 +82,8 @@ void pwmv2_config_pwm(PWMV2_Type *pwm_x, pwm_channel_t index,
                             PWMV2_PWM_CFG0_OUT_POLARITY_SET(config->invert_output) |
                             PWMV2_PWM_CFG0_FAULT_EN_ASYNC_SET(config->enable_async_fault) |
                             PWMV2_PWM_CFG0_FAULT_EN_SYNC_SET(config->enable_sync_fault) |
-                            PWMV2_PWM_CFG0_POL_UPDATE_SEL_SET(config->update_polarity_time);
+                            PWMV2_PWM_CFG0_POL_UPDATE_SEL_SET(config->update_polarity_time) |
+                            PWMV2_PWM_CFG0_POLARITY_OPT0_SET(config->enable_polarity_shadow);
     pwm_x->PWM[index].CFG1 = PWMV2_PWM_CFG1_HIGHZ_EN_N_SET(config->enable_output) |
                             PWMV2_PWM_CFG1_FORCE_UPDATE_TIME_SET(config->force_shadow_trigger) |
                             PWMV2_PWM_CFG1_FAULT_MODE_SET(config->fault_mode) |
@@ -95,7 +96,7 @@ void pwmv2_config_pwm(PWMV2_Type *pwm_x, pwm_channel_t index,
                             PWMV2_PWM_CFG1_FAULT_REC_SEL_SET(config->fault_recovery_trigmux_index);
     pwmv2_config_async_fault_source(pwm_x, index, &config->async_fault_source);
     if (enable_pair_mode) {
-        pwmv2_set_dead_area(pwm_x, index, config->dead_zone_in_half_cycle);
+        pwmv2_set_dead_area_hrpwm(pwm_x, index, (uint16_t)config->dead_zone_in_half_cycle, config->dead_zone_hrpwm);
     }
 }
 

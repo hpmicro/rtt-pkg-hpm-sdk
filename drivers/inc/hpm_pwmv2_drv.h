@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 HPMicro
+ * Copyright (c) 2023-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -23,6 +23,10 @@
 #define PWM_UNLOCK_KEY (0xB0382607UL)
 #define PWM_CMP_UNABLE_OUTPUT_INDEX (16)
 
+/* DMA selector offset */
+#define PWMV2_DMA_SEL_CMP_OFFSET (0U)
+#define PWMV2_DMA_SEL_COUNTER_RELOAD_OFFSET (24U)
+
 /* IRQ enable bit mask */
 #define PWM_IRQ_FAULT(chn) PWMV2_IRQ_EN_FAULT_IRQ_EN_FAULT_SET((1 << chn))
 #define PWM_IRQ_BURSTEND(counter) PWMV2_IRQ_EN_BURSTEND_IRQ_EN_BURSTEND_SET((1 << counter))
@@ -45,10 +49,6 @@
     (force_output << (pwm_index << 1))
 
 #define PWM_DUTY_CYCLE_FP_MAX ((1U << 24) - 1)
-
-#ifndef PWMV2_SOC_CAL_COUNT_MAX
-    #define PWMV2_SOC_CAL_COUNT_MAX 8
-#endif
 
 #define PWMV2_SHADOW_INDEX(x)  PWMV2_SHADOW_VAL_##x
 #define PWMV2_CMP_INDEX(x) PWMV2_CMP_VAL_WORK_##x
@@ -182,7 +182,6 @@ typedef enum {
 
 /**
  * @brief pwm compare config
- *
  */
 typedef struct pwmv2_cmp_config {
     uint32_t cmp;         /**< compare value */
@@ -216,6 +215,7 @@ typedef struct pwmv2_config {
     bool enable_sync_fault;             /**< enable the input faults from trig_mux */
     bool invert_output;                 /**< invert pwm output level */
     bool enable_four_cmp;                /**< Enable the four cmp functions */
+    bool enable_polarity_shadow;        /**< enable polarity shadow register function */
     pwmv2_async_fault_source_config_t async_fault_source;
     pwm_shadow_register_output_polarity_t update_polarity_time;
     pwm_logic_four_cmp_cfg_t logic;     /**< valid only for pwm0/2/4/6 when trig_sel4 is set */
@@ -228,6 +228,7 @@ typedef struct pwmv2_config {
     uint8_t force_trigmux_index;               /**< select one trigger from 8 as force signal */
     pwm_force_trigger_t force_trigger;          /**< @ref pwm_force_trigger_t */
     uint32_t dead_zone_in_half_cycle;   /**< dead zone in half cycle*/
+    uint8_t dead_zone_hrpwm;            /**< dead zone high resolution (0-255), only valid when PWM_SOC_HRPWM_SUPPORT is enabled */
 } pwmv2_config_t;
 
 /**
@@ -264,6 +265,18 @@ extern "C" {
  *
  */
 void pwmv2_deinit(PWMV2_Type *pwm_x);
+
+
+/**
+ * @brief get default pwm config
+ *
+ * @param[out] config @ref pwmv2_config_t
+ */
+static inline void pwmv2_get_default_config(pwmv2_config_t *config)
+{
+    *config = (pwmv2_config_t){0};
+}
+
 
 /**
  * @brief issue all shawdow register
@@ -390,8 +403,8 @@ static inline void pwmv2_set_shadow_val(PWMV2_Type *pwm_x, uint8_t index, uint32
  */
 static inline void pwmv2_force_output(PWMV2_Type *pwm_x, pwm_channel_t chn, pwm_force_mode_t mode, bool invert)
 {
-    pwm_x->FORCE_MODE = (pwm_x->FORCE_MODE & ~(PWMV2_FORCE_MODE_POLARITY_SET((1 << (chn << 1))) | PWMV2_FORCE_MODE_FORCE_MODE_SET((3 << (chn << 1))))) |
-                        PWMV2_FORCE_MODE_POLARITY_SET((invert << (chn << 1))) |
+    pwm_x->FORCE_MODE = (pwm_x->FORCE_MODE & ~(PWMV2_FORCE_MODE_POLARITY_SET((1 << chn)) | PWMV2_FORCE_MODE_FORCE_MODE_SET((3 << (chn << 1))))) |
+                        PWMV2_FORCE_MODE_POLARITY_SET((invert << chn)) |
                         PWMV2_FORCE_MODE_FORCE_MODE_SET((mode << (chn << 1)));
 }
 
@@ -771,15 +784,69 @@ static inline void pwmv2_set_dead_area(PWMV2_Type *pwm_x, pwm_channel_t chn, uin
 }
 
 /**
+ * @brief set pwm dead area with high resolution
+ *
+ * @param pwm_x PWM base address, HPM_PWMx(x=0..n)
+ * @param chn @ref pwm_channel_t
+ * @param dead_cycle dead area in clock cycles (16-bit)
+ * @param dead_hrpwm dead area in high resolution ticks (8-bit, 0-255)
+ */
+static inline void pwmv2_set_dead_area_hrpwm(PWMV2_Type *pwm_x, pwm_channel_t chn, uint16_t dead_cycle, uint8_t dead_hrpwm)
+{
+    pwm_x->PWM[chn].DEAD_AREA = PWMV2_PWM_DEAD_AREA_DEAD_AREA_SET(((uint32_t)dead_cycle << 8) | dead_hrpwm);
+}
+
+/**
+ * @brief Check whether a CMP event is invalid for cross-period trigger, IRQ or DMA use
+ *
+ * This function detects unsupported cross-period compare events for CMP0~CMP15.
+ * These events should not be used as trigger output, compare IRQ or compare DMA
+ * sources when the compare working value is greater than the related counter
+ * reload working value.
+ *
+ * @param pwm_x PWM base address, HPM_PWMx(x=0..n)
+ * @param cmp_index cmp index
+ * @return true if the selected CMP event is unsupported for cross-period use
+ * @return false if the selected CMP event is supported or is not cross-period
+ */
+static inline bool pwmv2_is_cmp_cross_period_event_invalid(PWMV2_Type *pwm_x, uint8_t cmp_index)
+{
+    uint8_t counter_index;
+
+    if (cmp_index >= PWM_CMP_UNABLE_OUTPUT_INDEX) {
+        return false;
+    }
+
+    counter_index = cmp_index >> 2;
+    if ((cmp_index & 0x3U) == counter_index) {
+        return false;
+    }
+
+    return PWMV2_CMP_VAL_WORK_VALUE_GET(pwm_x->CMP_VAL_WORK[cmp_index]) >
+           PWMV2_CNT_RELOAD_WORK_VALUE_GET(pwm_x->CNT_RELOAD_WORK[counter_index]);
+}
+
+/**
  * @brief Setting the comparator as an input to trigmux
+ *
+ * @warning Check the return value. status_invalid_argument means an unsupported
+ *       cross-period trigger output is selected. Use CMP16~CMP23 for
+ *       cross-period trigger output if the compare value is greater than the
+ *       related counter reload value.
  *
  * @param pwm_x PWM base address, HPM_PWMx(x=0..n)
  * @param trigmux_chn @ref pwm_channel_t
  * @param cmp_index cmp index
+ * @retval status_success Set trigger output CMP index successfully
+ * @retval status_invalid_argument Unsupported CMP is selected for cross-period trigger output
  */
-static inline void pwmv2_set_trigout_cmp_index(PWMV2_Type *pwm_x, pwm_channel_t trigmux_chn, uint8_t cmp_index)
+static inline hpm_stat_t pwmv2_set_trigout_cmp_index(PWMV2_Type *pwm_x, pwm_channel_t trigmux_chn, uint8_t cmp_index)
 {
+    if (pwmv2_is_cmp_cross_period_event_invalid(pwm_x, cmp_index)) {
+        return status_invalid_argument;
+    }
     pwm_x->TRIGGER_CFG[trigmux_chn] = (pwm_x->TRIGGER_CFG[trigmux_chn] & ~PWMV2_TRIGGER_CFG_TRIGGER_OUT_SEL_MASK) | PWMV2_TRIGGER_CFG_TRIGGER_OUT_SEL_SET(cmp_index);
+    return status_success;
 }
 
 /**
@@ -1051,7 +1118,7 @@ static inline uint32_t pwmv2_get_irq_status_all(PWMV2_Type *pwm_x)
  */
 static inline void pwmv2_clear_calculate_overflow_irq_status(PWMV2_Type *pwm_x)
 {
-    pwm_x->IRQ_STS &= PWMV2_IRQ_STS_IRQ_CAL_OVERFLOW_MASK;
+    pwm_x->IRQ_STS = PWMV2_IRQ_STS_IRQ_CAL_OVERFLOW_MASK;
 }
 
 /**
@@ -1209,12 +1276,23 @@ static inline void pwmv2_clear_burstend__irq_status(PWMV2_Type *pwm_x, uint32_t 
 /**
  * @brief enable cmp irq
  *
+ * @warning Check the return value. status_invalid_argument means an unsupported
+ *       cross-period compare IRQ is selected. Use CMP16~CMP23 for
+ *       cross-period compare IRQ if the compare value is greater than the
+ *       related counter reload value.
+ *
  * @param pwm_x PWM base address, HPM_PWMx(x=0..n)
  * @param cmp_index cmp index
+ * @retval status_success Enable compare IRQ successfully
+ * @retval status_invalid_argument Unsupported CMP is selected for cross-period compare IRQ
  */
-static inline void pwmv2_enable_cmp_irq(PWMV2_Type *pwm_x, uint8_t cmp_index)
+static inline hpm_stat_t pwmv2_enable_cmp_irq(PWMV2_Type *pwm_x, uint8_t cmp_index)
 {
+    if (pwmv2_is_cmp_cross_period_event_invalid(pwm_x, cmp_index)) {
+        return status_invalid_argument;
+    }
     pwm_x->IRQ_EN_CMP |= PWMV2_IRQ_EN_CMP_IRQ_EN_CMP_SET(1 << cmp_index);
+    return status_success;
 }
 
 /**
@@ -1335,7 +1413,7 @@ static inline void pwmv2_disable_fault_irq(PWMV2_Type *pwm_x, pwm_channel_t chan
  */
 static inline void pwmv2_enable_burstend_irq(PWMV2_Type *pwm_x, pwm_counter_t counter_index)
 {
-    pwm_x->IRQ_EN_BURSTEND |= PWMV2_IRQ_EN_FAULT_IRQ_EN_FAULT_SET(1 << counter_index);
+    pwm_x->IRQ_EN_BURSTEND |= PWMV2_IRQ_EN_BURSTEND_IRQ_EN_BURSTEND_SET(1 << counter_index);
 }
 
 /**
@@ -1346,20 +1424,31 @@ static inline void pwmv2_enable_burstend_irq(PWMV2_Type *pwm_x, pwm_counter_t co
  */
 static inline void pwmv2_disable_burstend_irq(PWMV2_Type *pwm_x, pwm_counter_t counter_index)
 {
-    pwm_x->IRQ_EN_BURSTEND &= ~PWMV2_IRQ_EN_FAULT_IRQ_EN_FAULT_SET(1 << counter_index);
+    pwm_x->IRQ_EN_BURSTEND &= ~PWMV2_IRQ_EN_BURSTEND_IRQ_EN_BURSTEND_SET(1 << counter_index);
 }
 
 /**
  * @brief enable dma at compare point
  *
+ * @warning Check the return value. status_invalid_argument means an unsupported
+ *       cross-period DMA compare event is selected. Use CMP16~CMP23 for
+ *       cross-period DMA compare event if the compare value is greater than the
+ *       related counter reload value.
+ *
  * @param pwm_x PWM base address, HPM_PWMx(x=0..n)
  * @param dma_channel @ref pwm_dma_chn_t
  * @param cmp_index cmp index
+ * @retval status_success Enable DMA at compare point successfully
+ * @retval status_invalid_argument Unsupported CMP is selected for cross-period DMA compare event
  */
-static inline void pwmv2_enable_dma_at_compare_point(PWMV2_Type *pwm_x, pwm_dma_chn_t dma_channel, uint8_t cmp_index)
+static inline hpm_stat_t pwmv2_enable_dma_at_compare_point(PWMV2_Type *pwm_x, pwm_dma_chn_t dma_channel, uint8_t cmp_index)
 {
+    if (pwmv2_is_cmp_cross_period_event_invalid(pwm_x, cmp_index)) {
+        return status_invalid_argument;
+    }
     pwm_x->DMA_EN = (pwm_x->DMA_EN & ~((PWMV2_DMA_EN_DMA0_SEL_MASK | PWMV2_DMA_EN_DMA0_EN_MASK) << (PWMV2_DMA_EN_DMA1_SEL_SHIFT * dma_channel))) |
     ((PWMV2_DMA_EN_DMA0_SEL_SET(cmp_index) | PWMV2_DMA_EN_DMA0_EN_MASK) << (PWMV2_DMA_EN_DMA1_SEL_SHIFT * dma_channel));
+    return status_success;
 }
 
 /**
@@ -1376,14 +1465,22 @@ static inline void pwmv2_disable_dma_at_compare_point(PWMV2_Type *pwm_x, pwm_dma
 /**
  * @brief enable dma at reload point
  *
+ * @note Hardware limitation: counter reload event can only trigger its corresponding DMA channel.
+ *       - counter0 reload -> pwm_dma_0
+ *       - counter1 reload -> pwm_dma_1
+ *       - counter2 reload -> pwm_dma_2
+ *       - counter3 reload -> pwm_dma_3
+ *       Compare events (CMP0~CMP23) do not have such limitation and can trigger any DMA channel.
+ *
  * @param pwm_x PWM base address, HPM_PWMx(x=0..n)
- * @param dma_channel @ref pwm_dma_chn_t
- * @param reload_index @ref pwm_counter_t
+ * @param dma_channel @ref pwm_dma_chn_t, DMA channel to enable
+ * @param reload_index @ref pwm_counter_t, this parameter is not used
  */
 static inline void pwmv2_enable_dma_at_reload_point(PWMV2_Type *pwm_x, pwm_dma_chn_t dma_channel, pwm_counter_t reload_index)
 {
+    (void)reload_index;
     pwm_x->DMA_EN = (pwm_x->DMA_EN & ~((PWMV2_DMA_EN_DMA0_SEL_MASK | PWMV2_DMA_EN_DMA0_EN_MASK) << (PWMV2_DMA_EN_DMA1_SEL_SHIFT * dma_channel))) |
-    ((PWMV2_DMA_EN_DMA0_SEL_SET(reload_index + 24) | PWMV2_DMA_EN_DMA0_EN_MASK) << (PWMV2_DMA_EN_DMA1_SEL_SHIFT * dma_channel));
+    ((PWMV2_DMA_EN_DMA0_SEL_SET(dma_channel + PWMV2_DMA_SEL_COUNTER_RELOAD_OFFSET) | PWMV2_DMA_EN_DMA0_EN_MASK) << (PWMV2_DMA_EN_DMA1_SEL_SHIFT * dma_channel));
 }
 
 /**

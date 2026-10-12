@@ -109,49 +109,37 @@ typedef struct gptmr_channel_monitor_config {
 } gptmr_channel_monitor_config_t;
 #endif
 
-#if defined(HPM_IP_FEATURE_GPTMR_QEI_MODE) && (HPM_IP_FEATURE_GPTMR_QEI_MODE == 1)
-typedef enum gptmr_qei_ch_group {
-    gptmr_qei_ch_group_01 = 0,
-    gptmr_qei_ch_group_23 = 2,
-} gptmr_qei_ch_group_t;
-
-typedef enum gptmr_qei_type {
-    gptmr_qei_ud_mode = 0,
-    gptmr_qei_ab_mode,
-    gptmr_qei_pd_mode,
-} gptmr_qei_type_t;
-
-typedef struct gptmr_qei_config {
-    gptmr_qei_type_t type;
-    gptmr_qei_ch_group_t ch_group;
-    uint32_t phmax;
-} gptmr_qei_config_t;
+#if defined(HPM_IP_FEATURE_GPTMR_BURST_MODE) && (HPM_IP_FEATURE_GPTMR_BURST_MODE == 1)
+typedef enum gptmr_burst_counter_mode {
+    gptmr_burst_counter_restart = 0,
+    gptmr_burst_counter_continue,
+} gptmr_burst_counter_mode_t;
 
 #endif
 
 /**
  * @brief GPTMR channel config
  */
-typedef struct gptmr_channel_config {
-    gptmr_work_mode_t mode;
-    gptmr_dma_request_event_t dma_request_event;
-    gptmr_synci_edge_t synci_edge;
-    uint32_t cmp[GPTMR_CH_CMP_COUNT];
-    uint32_t reload;
-    bool cmp_initial_polarity_high;
-    bool enable_cmp_output;
-    bool enable_sync_follow_previous_channel;
-    bool enable_software_sync;
-    bool debug_mode;
+typedef struct gptmr_channel_cfg {
+    gptmr_work_mode_t mode;                             /**< Work mode: capture at rising/falling/both edges, measure width, or no capture */
+    gptmr_dma_request_event_t dma_request_event;        /**< DMA request event source: cmp0, cmp1, input toggle, reload, or disabled */
+    gptmr_synci_edge_t synci_edge;                      /**< SYNCI valid edge: none, falling, rising, or both */
+    uint32_t cmp[GPTMR_CH_CMP_COUNT];                   /**< Comparator values (hardware register = cmp - 1 for non-zero/0xFFFFFFFF) */
+    uint32_t reload;                                    /**< Reload value (hardware register = reload - 1 for non-zero/0xFFFFFFFF) */
+    bool cmp_initial_polarity_high;                     /**< Initial output polarity: true = high, false = low */
+    bool enable_cmp_output;                             /**< Enable comparator output to pin */
+    bool enable_sync_follow_previous_channel;           /**< Enable sync follow previous channel */
+    bool enable_software_sync;                          /**< Enable software sync trigger */
+    bool debug_mode;                                    /**< Enable debug mode (timer stops on core halt) */
 #if defined(HPM_IP_FEATURE_GPTMR_MONITOR) && (HPM_IP_FEATURE_GPTMR_MONITOR == 1)
-    bool enable_monitor;
-    gptmr_channel_monitor_config_t monitor_config;
+    bool enable_monitor;                                /**< Enable input signal monitor */
+    gptmr_channel_monitor_config_t monitor_config;      /**< Monitor configuration: monitor type, max/min thresholds */
 #endif
 #if defined(HPM_IP_FEATURE_GPTMR_CNT_MODE) && (HPM_IP_FEATURE_GPTMR_CNT_MODE == 1)
-    gptmr_counter_mode_t counter_mode;
+    gptmr_counter_mode_t counter_mode;                  /**< Counter mode: internal or external clock source */
 #endif
 #if defined(HPM_IP_FEATURE_GPTMR_OP_MODE) && (HPM_IP_FEATURE_GPTMR_OP_MODE == 1)
-    bool enable_opmode;
+    bool enable_opmode;                                 /**< Enable one-shot mode (timer stops at reload) */
 #endif
 } gptmr_channel_config_t;
 
@@ -279,11 +267,7 @@ static inline uint32_t gptmr_channel_get_counter(GPTMR_Type *ptr,
  */
 static inline void gptmr_trigger_channel_software_sync(GPTMR_Type *ptr, uint32_t ch_index_mask)
 {
-#if defined(HPM_IP_FEATURE_GPTMR_QEI_MODE) && (HPM_IP_FEATURE_GPTMR_QEI_MODE == 1)
-    ptr->GCR = (ptr->GCR & ~GPTMR_GCR_SWSYNCT_MASK) | GPTMR_GCR_SWSYNCT_SET(ch_index_mask);
-#else
     ptr->GCR = ch_index_mask;
-#endif
 }
 
 /**
@@ -620,6 +604,110 @@ hpm_stat_t gptmr_channel_monitor_config(GPTMR_Type *ptr, uint8_t ch_index,
 
 #endif
 
+#if defined(HPM_IP_FEATURE_GPTMR_BURST_MODE) && (HPM_IP_FEATURE_GPTMR_BURST_MODE == 1)
+/**
+ * @brief gptmr channel enable burst mode, it's burst mode, Timer stops after reaching reload value burst_cfg times.
+
+ *
+ * @note  reload irq will be always set at one-shot mode at end
+ *
+ * @param [in] ptr GPTMR base address
+ * @param [in] ch_index channel index
+ */
+static inline hpm_stat_t gptmr_channel_enable_burst_mode(GPTMR_Type *ptr, uint8_t ch_index)
+{
+    /* enable burst mode, should disable opmode first */
+    if (gptmr_channel_is_opmode(ptr, ch_index) == true) {
+        return status_invalid_argument;
+    }
+    ptr->CHANNEL[ch_index].CR |= GPTMR_CHANNEL_CR_BURST_MODE_MASK;
+    return status_success;
+}
+
+/**
+ * @brief gptmr channel disable opmode, it's circular mode.the timer restarts from 0 after reaching the reload value.
+ *
+ * @param [in] ptr GPTMR base address
+ * @param [in] ch_index channel index
+ */
+static inline void gptmr_channel_disable_burst_mode(GPTMR_Type *ptr, uint8_t ch_index)
+{
+    ptr->CHANNEL[ch_index].CR &= ~GPTMR_CHANNEL_CR_BURST_MODE_MASK;
+}
+
+/**
+ * @brief gptmr channel get burstmode.
+ *
+ * @param [in] ptr GPTMR base address
+ * @param [in] ch_index channel index
+ * @retval bool true for burstmode, false for circular mode
+ */
+static inline bool gptmr_channel_is_burst_mode(GPTMR_Type *ptr, uint8_t ch_index)
+{
+    return ((ptr->CHANNEL[ch_index].CR & GPTMR_CHANNEL_CR_BURST_MODE_MASK) == GPTMR_CHANNEL_CR_BURST_MODE_MASK) ? true : false;
+}
+
+/**
+ * @brief gptmr channel set target burst count.
+ *
+ * @param [in] ptr GPTMR base address
+ * @param [in] ch_index channel index
+ * @param [in] burst_count configure burst count: number of times timer reaches reload value.
+ */
+static inline void gptmr_channel_set_target_burst_count(GPTMR_Type *ptr, uint8_t ch_index, uint16_t burst_count)
+{
+    ptr->CHANNEL[ch_index].BURST_CFG = (ptr->CHANNEL[ch_index].BURST_CFG & ~GPTMR_CHANNEL_BURST_CFG_BURST_CFG_MASK) | GPTMR_CHANNEL_BURST_CFG_BURST_CFG_SET(burst_count);
+}
+
+/**
+ * @brief gptmr channel get target burst count.
+ *
+ * @param [in] ptr GPTMR base address
+ * @param [in] ch_index channel index
+ * @retval uint16_t configure burst count: number of times timer reaches reload value.
+ */
+static inline uint16_t gptmr_channel_get_target_burst_count(GPTMR_Type *ptr, uint8_t ch_index)
+{
+    return (uint16_t)GPTMR_CHANNEL_BURST_CFG_BURST_CFG_GET(ptr->CHANNEL[ch_index].BURST_CFG);
+}
+
+/**
+ * @brief gptmr channel get current burst count.
+ *
+ * @param [in] ptr GPTMR base address
+ * @param [in] ch_index channel index
+ * @retval uint32_t current burst count
+ */
+
+static inline uint32_t gptmr_channel_get_current_burst_count(GPTMR_Type *ptr, uint8_t ch_index)
+{
+    return GPTMR_CHANNEL_BURST_COUNT_BURST_COUNT_GET(ptr->CHANNEL[ch_index].BURST_COUNT);
+
+}
+
+/**
+ * @brief gptmr channel burst mode start counter
+ * @note in gptmr_burst_counter_continue mode, restart uses current counter without reset if current burst count < set burst count.
+ *
+ * @param [in] ptr GPTMR base address
+ * @param [in] ch_index channel index
+ * @param [in] mode gptmr_burst_counter_mode_t
+ * @retval hpm_stat_t status_invalid_argument or status_success
+ */
+hpm_stat_t gptmr_channel_burst_mode_start_counter(GPTMR_Type *ptr, uint8_t ch_index, gptmr_burst_counter_mode_t mode);
+
+/**
+ * @brief gptmr channel burst mode stop counter
+ *
+ * @param [in] ptr GPTMR base address
+ * @param [in] ch_index channel index
+ */
+static inline void gptmr_channel_burst_mode_stop_counter(GPTMR_Type *ptr, uint8_t ch_index)
+{
+    ptr->CHANNEL[ch_index].CR &= ~GPTMR_CHANNEL_CR_CEN_MASK;
+}
+#endif
+
 /**
  * @brief gptmr channel start counter
  *
@@ -637,44 +725,31 @@ static inline void gptmr_start_counter(GPTMR_Type *ptr, uint8_t ch_index)
     ptr->CHANNEL[ch_index].CR |= GPTMR_CHANNEL_CR_CEN_MASK;
 }
 
-#if defined(HPM_IP_FEATURE_GPTMR_QEI_MODE) && (HPM_IP_FEATURE_GPTMR_QEI_MODE == 1)
+/**
+ * @brief gptmr channel set comparator initial output polarity
+ * @param [in] ptr GPTMR base address
+ * @param [in] ch_index channel index
+ * @param [in] high  true: initial output is high level
+ */
+static inline void gptmr_channel_set_cmp_initial_polarity(GPTMR_Type *ptr, uint8_t ch_index, bool high)
+{
+    if (high) {
+        ptr->CHANNEL[ch_index].CR |= GPTMR_CHANNEL_CR_CMPINIT_MASK;
+    } else {
+        ptr->CHANNEL[ch_index].CR &= ~GPTMR_CHANNEL_CR_CMPINIT_MASK;
+    }
+}
 
 /**
- * @brief gptmr config qei.
- *
+ * @brief gptmr channel get comparator initial output polarity
  * @param [in] ptr GPTMR base address
- * @param [in] qei_config gptmr_qei_config_t
+ * @param [in] ch_index channel index
+ * @retval bool true: initial output is high level
  */
-void gptmr_config_qei(GPTMR_Type *ptr, gptmr_qei_config_t *qei_config);
-
-/**
- * @brief gptmr set qei type.
- *
- * @param [in] ptr GPTMR base address
- * @param [in] ch_group gptmr_qei_ch_group_t
- * @param [in] type gptmr_qei_type_t
- */
-void gptmr_set_qei_type(GPTMR_Type *ptr, gptmr_qei_ch_group_t ch_group, gptmr_qei_type_t type);
-
-/**
- * @brief gptmr get qei type.
- *
- * @param [in] ptr GPTMR base address
- * @param [in] ch_group gptmr_qei_ch_group_t
- * @retval gptmr_qei_type_t ud_mode or ab_mode or pd_mode
- */
-gptmr_qei_type_t gptmr_get_qei_type(GPTMR_Type *ptr, gptmr_qei_ch_group_t ch_group);
-
-/**
- * @brief gptmr get qei phase count.
- *
- * @param [in] ptr GPTMR base address
- * @param [in] ch_group gptmr_qei_ch_group_t
- * @retval uint32_t qei phase count
- */
-uint32_t gptmr_get_qei_phcnt(GPTMR_Type *ptr, gptmr_qei_ch_group_t ch_group);
-
-#endif
+static inline bool gptmr_channel_get_cmp_initial_polarity(GPTMR_Type *ptr, uint8_t ch_index)
+{
+    return (ptr->CHANNEL[ch_index].CR & GPTMR_CHANNEL_CR_CMPINIT_MASK) ? true : false;
+}
 
 /**
  * @}

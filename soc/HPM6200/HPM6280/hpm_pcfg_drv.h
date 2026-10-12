@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 HPMicro
+ * Copyright (c) 2023-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -14,7 +14,7 @@
 /**
  *
  * @brief PCFG driver APIs
- * @defgroup pcfg_interface PCFG driver APIs
+ * @defgroup pcfg_hpm6280_interface PCFG driver APIs for HPM6280
  * @ingroup io_interfaces
  * @{
  */
@@ -589,6 +589,36 @@ static inline void pcfg_irc24m_reload_trim(PCFG_Type *ptr)
 {
     ptr->RC24M &= ~PCFG_RC24M_RC_TRIMMED_MASK;
 }
+
+/**
+ * @brief dcdc switch to dcm mode
+ *
+ * @param[in] ptr base address
+ */
+void pcfg_dcdc_switch_to_dcm_mode(PCFG_Type *ptr);
+
+/**
+ * @brief dcdc switch to ccm mode
+ *
+ * @param[in] ptr base address
+ */
+void pcfg_dcdc_switch_to_ccm_mode(PCFG_Type *ptr);
+
+/**
+ * @brief set dcdc voltage and switch to dcm mode
+ *
+ * @param[in] ptr base address
+ * @param[in] voltage target voltage in mV
+ */
+void pcfg_dcdc_set_voltage_dcm_mode(PCFG_Type *ptr, uint16_t voltage);
+
+/**
+ * @brief set dcdc voltage and switch to ccm mode
+ *
+ * @param[in] ptr base address
+ * @param[in] voltage target voltage in mV
+ */
+void pcfg_dcdc_set_voltage_ccm_mode(PCFG_Type *ptr, uint16_t voltage);
 
 /**
  * @brief config irc24m track

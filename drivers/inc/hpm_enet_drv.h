@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 HPMicro
+ * Copyright (c) 2021-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -35,9 +35,9 @@
 #define ENET_MAX_PAYLOAD          (1500U)  /**< Maximum Ethernet payload size */
 #define ENET_MAX_FRAME_SIZE       (1526U)  /**< ENET_HEADER + 2*ENET_VLAN_TAG + ENET_MAX_PAYLOAD + ENET_CRC */
 #define ENET_JUMBO_FRAME_PAYLOAD  (9000U)  /**< Jumbo frame payload size */
-#define ENET_MAC                  (6)      /**< Ethernet MAC size */
-#define ENET_ERROR                (0)      /**< ENET error */
-#define ENET_SUCCESS              (1)      /**< ENET success */
+#define ENET_MAC_SIZE             (6)      /**< Ethernet MAC size in bytes */
+#define ENET_ERROR                (1)      /**< ENET error */
+#define ENET_SUCCESS              (0)      /**< ENET success */
 
 #define ENET_ADJ_FREQ_BASE_ADDEND (0x80000000UL)  /**< PTP base adjustment addend */
 #define ENET_ONE_SEC_IN_NANOSEC   (1000000000UL)  /**< one second in nanoseconds */
@@ -47,6 +47,10 @@
 
 #ifndef ENET_RETRY_CNT
 #define ENET_RETRY_CNT            (10000UL)   /**< Enet retry count for PTP */
+#endif
+
+#ifndef ENET_MDIO_BUSY_RETRY_CNT
+#define ENET_MDIO_BUSY_RETRY_CNT  (100000UL)  /**< Enet MDIO GMII busy wait retry count */
 #endif
 
 #ifndef ENET_RETRY_DMA_INIT_CNT
@@ -260,6 +264,12 @@ typedef enum {
     enet_pps_cmd_cancel_stop_pulse_train
 } enet_pps_cmd_t;
 
+/** @brief PPS output mode: fixed output (fixed freq) or flexible output (interval/width/target) */
+typedef enum {
+    enet_pps_fixed_output = 0,     /**< PPS0 control output with fixed frequency */
+    enet_pps_flexible_output       /**< PPSx flexible output with interval/width/target time */
+} enet_pps_output_mode_t;
+
 /*---------------------------------------------------------------------
  *  Typedef Struct Declarations
  *---------------------------------------------------------------------
@@ -460,12 +470,14 @@ typedef struct{
     uint32_t length;
     uint32_t buffer;
     uint32_t seg;
-    uint8_t free;
-    enet_rx_desc_t *rx_desc;
+    uint8_t used;
+    enet_rx_desc_t *rx_desc;    /**< first segment (FS); walk chain to release to DMA */
+    enet_rx_desc_t *ls_rx_desc; /**< last segment (LS); status and RDES6/RDES7 timestamp */
 } enet_frame_t;
 
 /** @brief enet reception frame info struct */
 typedef struct  {
+    ENET_Type *base;
     enet_rx_desc_t *fs_rx_desc;
     enet_rx_desc_t *ls_rx_desc;
     uint32_t  seg_count;
@@ -483,6 +495,13 @@ typedef struct {
     uint8_t saic;           /* SA insertion control */
 } enet_tx_control_config_t;
 
+/** @brief ENET TX hardware CRC mode (TDES0 DC / CRCR) */
+typedef enum {
+    enet_tx_hw_crc_append = 0, /**< MAC appends FCS after the payload */
+    enet_tx_hw_crc_replace,    /**< MAC replaces the last 4 bytes with FCS */
+    enet_tx_hw_crc_off         /**< MAC does not append or replace FCS */
+} enet_tx_hw_crc_mode_t;
+
 /** @brief enet description struct */
 typedef struct {
     enet_tx_desc_t *tx_desc_list_head;
@@ -494,6 +513,21 @@ typedef struct {
     enet_rx_frame_info_t rx_frame_info;
     enet_tx_control_config_t tx_control_config;
 } enet_desc_t;
+
+/** @brief ENET HW checksum offload configuration */
+typedef struct {
+    bool tx_checksum_offload;  /**< TDES CIC: HW insert IP/L4 checksum on TX */
+    bool rx_checksum_offload;  /**< MACCFG IPC: HW verify IP/L4 checksum on RX */
+    bool drop_tcp_udp_err;     /**< IPC on: clear DT to drop at MAC; else set DT for driver drop */
+} enet_hw_checksum_config_t;
+
+/** @brief ENET RX checksum status from enhanced RX descriptor rdes4 */
+typedef struct {
+    bool ipv4_received;
+    bool header_err;
+    bool payload_err;
+    bool chksum_bypassed;
+} enet_rx_checksum_status_t;
 
 /** @brief PTP system timestamp struct */
 typedef struct {
@@ -514,14 +548,6 @@ typedef struct {
     uint32_t nsec;
 } enet_ptp_ts_target_t;
 
-/** @brief PTP config strcut */
-typedef struct {
-    uint8_t ssinc;
-    uint8_t timestamp_rollover_mode;
-    uint8_t update_method;
-    uint32_t addend;
-} enet_ptp_config_t;
-
 /** @brief PTP PPS command output config strcut */
 typedef struct {
     uint32_t pps_interval;
@@ -529,6 +555,26 @@ typedef struct {
     uint32_t target_sec;
     uint32_t target_nsec;
 } enet_pps_cmd_config_t;
+
+/** @brief PTP config struct (used by enet_init_ptp; PPS and initial timestamp optional) */
+typedef struct {
+    uint8_t ssinc;
+    uint8_t timestamp_rollover_mode;
+    uint8_t update_method;
+    uint32_t addend;
+    /** PPS output: used when enet_init_ptp is called with pps_enable_output true */
+    enet_pps_output_mode_t mode;
+    union {
+        enet_pps_ctrl_t control_freq;   /**< for enet_pps_fixed_output: PPS0 frequency */
+        struct {
+            enet_pps_idx_t idx;
+            enet_pps_cmd_config_t config;
+            enet_pps_cmd_t cmd;         /**< PPS command e.g. enet_pps_cmd_start_pulse_train */
+        } flexible;                     /**< for enet_pps_flexible_output: PPSx index, config and command */
+    } param;                            /**< mode-specific parameters: control_freq (fixed) or flexible */
+    bool pps_enable_output;             /**< for enet_init_ptp: true to configure PPS output (mode/param); false: only init PTP */
+    const enet_ptp_ts_update_t *ptp_timestamp; /**< for enet_init_ptp: initial PTP time set after init (via enet_set_ptp_timestamp), must not be NULL */
+} enet_ptp_config_t;
 
 /** @brief PTP auxiliary timestamp struct */
 typedef struct {
@@ -551,6 +597,7 @@ typedef struct {
     uint32_t mmc_intr_mask_rx;
     uint32_t mmc_intr_tx;
     uint32_t mmc_intr_mask_tx;
+    uint32_t mmc_ipc_intr_mask_rx;
 } enet_int_config_t;
 
 /*
@@ -575,6 +622,18 @@ extern "C" {
 void enet_get_default_tx_control_config(ENET_Type *ptr, enet_tx_control_config_t *config);
 
 /**
+ * @brief Set TX hardware CRC mode on a transmission control config
+ *
+ * Maps append/replace/off to TDES0 disable_crc (DC) and enable_crcr (CRCR).
+ * Replace mode expects the last TX segment length to include 4 FCS bytes.
+ *
+ * @param[in] ptr An Ethernet peripheral base address
+ * @param[out] config A pointer to a control config structure for transmission
+ * @param[in] mode TX hardware CRC mode
+ */
+void enet_tx_control_set_hw_crc_mode(ENET_Type *ptr, enet_tx_control_config_t *config, enet_tx_hw_crc_mode_t mode);
+
+/**
  * @brief Get a default interrupt config
  *
  * @param[in] ptr An Ethernet peripheral base address
@@ -591,35 +650,52 @@ void enet_get_default_interrupt_config(ENET_Type *ptr, enet_int_config_t *config
 uint32_t enet_get_interrupt_status(ENET_Type *ptr);
 
 /**
- * @brief Mask the specified mmc interrupt evenets of received frames
+ * @brief Mask the specified mmc interrupt events of received frames
  *
  * @param[in] ptr An Ethernet peripheral base address
- * @param[in] mask A mask of the specified evenets
+ * @param[in] mask A mask of the specified events
  */
 void enet_mask_mmc_rx_interrupt_event(ENET_Type *ptr, uint32_t mask);
 
 /**
- * @brief Mask the specified mmc interrupt evenets of transmitted frames
+ * @brief Mask the specified mmc interrupt events of transmitted frames
  *
  * @param[in] ptr An Ethernet peripheral base address
- * @param[in] mask A mask of the specified evenets
+ * @param[in] mask A mask of the specified events
  */
 void enet_mask_mmc_tx_interrupt_event(ENET_Type *ptr, uint32_t mask);
 
 /**
- * @brief Get a staus of mmc receive interrupt events
+ * @brief Mask the specified mmc ipc interrupt events of received frames
+ *
+ * @param[in] ptr An Ethernet peripheral base address
+ * @param[in] mask A mask of the specified events
+ */
+void enet_mask_mmc_ipc_rx_interrupt_event(ENET_Type *ptr, uint32_t mask);
+
+/**
+ * @brief Get a status of mmc receive interrupt events
  *
  * @param[in] ptr An Ethernet peripheral base address
  * @return A result of interrupt status
  */
 uint32_t enet_get_mmc_rx_interrupt_status(ENET_Type *ptr);
+
 /**
- * @brief et a staus of mmc transmission interrupt events
+ * @brief et a status of mmc transmission interrupt events
  *
  * @param[in] ptr An Ethernet peripheral base address
  * @return A result of interrupt status
  */
 uint32_t enet_get_mmc_tx_interrupt_status(ENET_Type *ptr);
+
+/**
+ * @brief et a status of mmc ipc receive interrupt events
+ *
+ * @param[in] ptr An Ethernet peripheral base address
+ * @return A result of interrupt status
+ */
+uint32_t enet_get_mmc_ipc_rx_interrupt_status(ENET_Type *ptr);
 
 /**
  * @brief Initialize controller
@@ -632,6 +708,38 @@ uint32_t enet_get_mmc_tx_interrupt_status(ENET_Type *ptr);
  * @return A result of the specified controller initialization
  */
 hpm_stat_t enet_controller_init(ENET_Type *ptr, enet_inf_type_t inf_type, enet_desc_t *desc, enet_mac_config_t *cfg, enet_int_config_t *int_config);
+
+/**
+ * @brief Get default HW checksum offload configuration
+ *
+ * @note drop_tcp_udp_err follows enable and is effective only when rx_checksum_offload is true.
+ *
+ * @param[out] cfg Pointer to HW checksum configuration
+ * @param[in] enable true to enable TX/RX HW checksum offload
+ */
+void enet_get_default_hw_checksum_config(enet_hw_checksum_config_t *cfg, bool enable);
+
+/**
+ * @brief Set HW checksum offload configuration
+ *
+ * @note Call after enet_controller_init(). drop_tcp_udp_err applies only when
+ *       rx_checksum_offload is true (IPC off makes DT reserved).
+ *
+ * @param[in] ptr An Ethernet peripheral base address
+ * @param[in] tx_cfg A pointer to TX control config (CIC updated in place)
+ * @param[in] cfg A pointer to HW checksum configuration
+ * @retval status_success Configuration applied
+ * @retval status_invalid_argument Invalid pointer argument
+ */
+hpm_stat_t enet_set_hw_checksum_config(ENET_Type *ptr, enet_tx_control_config_t *tx_cfg, const enet_hw_checksum_config_t *cfg);
+
+/**
+ * @brief Get RX checksum status from enhanced RX descriptor rdes4
+ *
+ * @param[in] desc A pointer to the last segment RX descriptor
+ * @param[out] status A pointer to RX checksum status
+ */
+void enet_get_rx_checksum_status(const enet_rx_desc_t *desc, enet_rx_checksum_status_t *status);
 
 /**
  * @brief Set port line speed
@@ -655,9 +763,12 @@ void enet_set_duplex_mode(ENET_Type *ptr, enet_duplex_mode_t mode);
  * @param[in] ptr An Ethernet peripheral base address
  * @param[in] phy_addr the specified address of phy
  * @param[in] addr the specified address of register
- * @retval A value corresponding to the specified register address
+ * @param[out] data the data read from the specified register
+ * @retval status_success MDIO read completed
+ * @retval status_invalid_argument data is NULL
+ * @retval status_timeout MDIO busy wait timed out
  */
-uint16_t enet_read_phy(ENET_Type *ptr, uint32_t phy_addr, uint32_t addr);
+hpm_stat_t enet_read_phy(ENET_Type *ptr, uint32_t phy_addr, uint32_t addr, uint16_t *data);
 
 /**
  * @brief Write phy
@@ -666,8 +777,10 @@ uint16_t enet_read_phy(ENET_Type *ptr, uint32_t phy_addr, uint32_t addr);
  * @param[in] phy_addr a specified address of phy
  * @param[in] addr a specified address of the register
  * @param[in] data a specified data to be written
+ * @retval status_success MDIO write completed
+ * @retval status_timeout MDIO busy wait timed out
  */
-void enet_write_phy(ENET_Type *ptr, uint32_t phy_addr, uint32_t addr, uint32_t data);
+hpm_stat_t enet_write_phy(ENET_Type *ptr, uint32_t phy_addr, uint32_t addr, uint32_t data);
 
 /**
  * @brief Resume reception process
@@ -708,12 +821,71 @@ enet_frame_t enet_get_received_frame(enet_rx_desc_t **parent_rx_desc_list_cur, e
 enet_frame_t enet_get_received_frame_interrupt(enet_rx_desc_t **parent_rx_desc_list_cur, enet_rx_frame_info_t *rx_frame_info, uint32_t rx_desc_count);
 
 /**
+ * @brief Get RX hardware timestamp from the last-segment descriptor
+ *
+ * With Advanced Timestamp, RDES6/RDES7 are valid only on the last descriptor
+ * (RDES0 LS) when Timestamp Available (RDES0[7]) is set and Timestamp Dropped
+ * (RDES4) is clear.
+ *
+ * @param[in] ls_rx_desc Last-segment RX descriptor (see @ref enet_frame_t::ls_rx_desc)
+ * @param[out] timestamp Captured RX timestamp
+ * @retval status_success Timestamp is valid and written to @p timestamp
+ * @retval status_invalid_argument Null pointer
+ * @retval status_fail Timestamp not available on this descriptor
+ */
+hpm_stat_t enet_get_rx_timestamp(const enet_rx_desc_t *ls_rx_desc, enet_ptp_ts_system_t *timestamp);
+
+/**
+ * @brief Wait for and read TX hardware timestamp from the last-segment descriptor
+ *
+ * TTSS and TDES6/TDES7 are valid only on the last segment (LS). This API waits
+ * for OWN clear and TTSS on @p ls_tx_desc, then reads TDES6/TDES7.
+ *
+ * @param[in] ls_tx_desc Last-segment TX descriptor of the frame
+ * @param[out] timestamp Captured TX timestamp
+ * @retval ENET_SUCCESS Timestamp is valid and written to @p timestamp
+ * @retval ENET_ERROR Null pointer, not LS, OWN/TTSS timeout
+ */
+uint32_t enet_get_tx_timestamp(enet_tx_desc_t *ls_tx_desc, enet_ptp_ts_system_t *timestamp);
+
+/**
+ * @brief Program one TX descriptor segment without giving it to DMA
+ *
+ * Clears OWN and segment flags, then sets buffer/length. First-segment control
+ * fields (TTSE/CIC/...) come from @p config; last segment sets LS and IOC.
+ * Call @ref enet_tx_desc_handoff_segments after all segments are filled.
+ *
+ * @param[in,out] desc TX descriptor to program
+ * @param[in] config TX control configuration (must not be NULL)
+ * @param[in] buffer Value for TDES2 buffer1 (gather: keep existing; scatter: pbuf)
+ * @param[in] size Byte length for TDES1 TBS1 (caller may include CRC pad)
+ * @param[in] is_first true if this is the first segment (FS)
+ * @param[in] is_last true if this is the last segment (LS)
+ */
+void enet_tx_desc_fill_segment(enet_tx_desc_t *desc, const enet_tx_control_config_t *config,
+                               uint32_t buffer, uint16_t size, bool is_first, bool is_last);
+
+/**
+ * @brief Hand off programmed TX descriptors to DMA
+ *
+ * Sets OWN from last segment to first (subsequent before first), then writes
+ * DMA_TX_POLL_DEMAND once. Call after FS/LS/buffer fields are fully programmed.
+ *
+ * @param[in] ptr An Ethernet peripheral base address
+ * @param[in] seg_desc Array of segment descriptor pointers (index 0 is FS)
+ * @param[in] seg_count Number of segments in @p seg_desc
+ */
+void enet_tx_desc_handoff_segments(ENET_Type *ptr, enet_tx_desc_t **seg_desc, uint32_t seg_count);
+
+/**
  * @brief prepare for the transmission descriptors (It will be deprecated.)
  *
  * @param[in] ptr An Ethernet peripheral base address
  * @param[out] parent_tx_desc_list_cur a pointer to the information of the reception frames
  * @param[in] frame_length the length of the transmission
  * @param[in] tx_buff_size the size of the transmission buffer
+ * @note Multi-segment frames set FS/LS per segment. OWN is set on subsequent
+ *       descriptors first, then on the first descriptor, before DMA poll.
  * @retval a result of the transmission preparation.
  *         1 means that the preparation is successful.
  *         0 means that the preparation is unsuccessful.
@@ -728,6 +900,9 @@ uint32_t enet_prepare_transmission_descriptors(ENET_Type *ptr, enet_tx_desc_t **
  * @param[in] config a pointer to the control configuration for the transmission frames
  * @param[in] frame_length the length of the transmission
  * @param[in] tx_buff_size the size of the transmission buffer
+ * @note Multi-segment frames set FS/LS per segment. OWN is set on subsequent
+ *       descriptors first, then on the first descriptor, before DMA poll.
+ *       Callers must fill the fixed TX ring buffers before calling.
  * @retval a result of the transmission preparation.
  *         1 means that the preparation is successful.
  *         0 means that the preparation is unsuccessful.
@@ -743,6 +918,8 @@ uint32_t enet_prepare_tx_desc(ENET_Type *ptr, enet_tx_desc_t **parent_tx_desc_li
  * @param[in] frame_length the length of the transmission
  * @param[in] tx_buff_size the size of the transmission buffer
  * @param[out] timestamp a pointer to the timestamp record of a transmitted frame
+ * @note Multi-segment OWN order matches @ref enet_prepare_tx_desc. When TTSE is
+ *       enabled, wait for last-segment OWN clear and TTSS, then read TDES6/TDES7.
  * @retval a result of the transmission preparation.
  *         1 means that the preparation is successful.
  *         0 means that the preparation is unsuccessful.
@@ -758,6 +935,9 @@ uint32_t enet_prepare_tx_desc_with_ts_record(ENET_Type *ptr,
  *
  * @param[in] ptr An Ethernet peripheral base address
  * @param[in] desc A pointer to transmission descriptors
+ * @note If @ref enet_buff_config_t::buffer is 0, only the descriptor ring is
+ *       linked; buffer1 stays unset for zero-copy TX that fills it later.
+ *       count and size are still required (size is max bytes per TX segment).
  */
 void enet_dma_tx_desc_chain_init(ENET_Type *ptr, enet_desc_t *desc);
 
@@ -777,12 +957,27 @@ void enet_dma_rx_desc_chain_init(ENET_Type *ptr,  enet_desc_t *desc);
 void enet_dma_flush(ENET_Type *ptr);
 
 /**
- * @brief Initialize a PTP timer
+ * @brief Get a default PTP config in flexible mode
  *
  * @param[in] ptr An Ethernet peripheral base address
- * @param[in] config A pointer to an enet_ptp_config struct instance
+ * @param[in] ptp_clk_freq PTP clock frequency
+ * @param[out] config A pointer to an enet_ptp_config struct instance
+ * @return A result of enet_get_default_ptp_config executing
+ * @retval status_success Getting a default ptp config successfully. Please refer to @ref hpm_stat_t.
+ * @retval status_invalid_argument Getting a default ptp config unsuccessfully due to passing one or more invalid arguments. Please refer to @ref hpm_stat_t.
  */
-void enet_init_ptp(ENET_Type *ptr, enet_ptp_config_t *config);
+hpm_stat_t enet_get_default_ptp_config(ENET_Type *ptr, uint32_t ptp_clk_freq, enet_ptp_config_t *config);
+
+/**
+ * @brief Initialize PTP timer; optionally configure PPS output and set initial timestamp
+ *
+ * @param[in] ptr An Ethernet peripheral base address
+ * @param[in] config A pointer to @ref enet_ptp_config_t; set pps_enable_output to true to configure PPS output; ptp_timestamp must not be NULL.
+ * @return Result of execution
+ * @retval status_success Initialize successfully. Please refer to @ref hpm_stat_t.
+ * @retval status_invalid_argument Invalid argument. Please refer to @ref hpm_stat_t.
+ */
+hpm_stat_t enet_init_ptp(ENET_Type *ptr, enet_ptp_config_t *config);
 
 /**
  * @brief Set a timestamp to the PTP timer
@@ -870,7 +1065,6 @@ hpm_stat_t enet_set_ppsx_command(ENET_Type *ptr, enet_pps_cmd_t cmd, enet_pps_id
  */
 hpm_stat_t enet_set_ppsx_config(ENET_Type *ptr, enet_pps_cmd_config_t *cmd_cfg, enet_pps_idx_t idx);
 
-
 /**
  * @brief Mask Ethernet interrupt events
  *
@@ -892,26 +1086,22 @@ void enet_mask_interrupt_event(ENET_Type *ptr, uint32_t mask);
 void enet_unmask_interrupt_event(ENET_Type *ptr, uint32_t mask);
 
 /**
- * @brief Disable PTP auxiliary snapshot
- *
- * Disables the PTP auxiliary snapshot feature for the specified Ethernet controller.
- *
- * @param ptr Pointer to the Ethernet controller instance
- * @param idx PTP auxiliary snapshot trigger index
- *
- * @return None
- */
-void enet_enable_ptp_auxiliary_snapshot(ENET_Type *ptr, enet_ptp_auxi_snapshot_trigger_idx_t idx);
-
-/**
  * @brief Enable PTP auxiliary snapshot
  *
  * Enables the PTP auxiliary snapshot feature for the specified Ethernet controller.
  *
  * @param ptr Pointer to the Ethernet controller instance
  * @param idx PTP auxiliary snapshot trigger index
+ */
+void enet_enable_ptp_auxiliary_snapshot(ENET_Type *ptr, enet_ptp_auxi_snapshot_trigger_idx_t idx);
+
+/**
+ * @brief Disable PTP auxiliary snapshot
  *
- * @return None
+ * Disables the PTP auxiliary snapshot feature for the specified Ethernet controller.
+ *
+ * @param ptr Pointer to the Ethernet controller instance
+ * @param idx PTP auxiliary snapshot trigger index
  */
 void enet_disable_ptp_auxiliary_snapshot(ENET_Type *ptr, enet_ptp_auxi_snapshot_trigger_idx_t idx);
 

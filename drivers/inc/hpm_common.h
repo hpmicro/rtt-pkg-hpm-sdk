@@ -120,8 +120,11 @@
 #define BIT31_MASK (0x80000000UL)
 
 #define HPM_PI      (3.14159265358979323846)
+#define HPM_PI_FLOAT (3.14159265358979323846f)
 #define HPM_2_PI    (6.28318530717958647692)
+#define HPM_2_PI_FLOAT (6.28318530717958647692f)
 #define HPM_HALF_PI (1.57079632679489661923)
+#define HPM_HALF_PI_FLOAT (1.57079632679489661923f)
 
 #if defined(__IAR_SYSTEMS_ICC__)
 #define HPM_NAN 0.NaN
@@ -179,6 +182,7 @@ enum {
     status_group_touch,
     status_group_plb_qei_encoder,
     status_group_pmbus,
+    status_group_gptmr,
 };
 
 /* @brief Common status code definitions */

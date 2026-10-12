@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 HPMicro
+ * Copyright (c) 2023-2025 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -123,7 +123,8 @@ typedef enum {
  */
 typedef enum {
     ewdg_cnt_clk_src_bus_clk,        /*!< Clock is from BUS clock */
-    ewdg_cnt_clk_src_ext_osc_clk,    /*!< Clock is from External OSC */
+    ewdg_cnt_clk_src_ext_osc_clk,    /*!< Clock is from External OSC (retained for compatibility) */
+    ewdg_cnt_src_clk_32k = ewdg_cnt_clk_src_ext_osc_clk,     /*!< Clock is from IRC 32K or OSC 32K(External), suggested option */
 } ewdg_cnt_clk_sel_t;
 
 /**
@@ -155,7 +156,7 @@ typedef enum {
     ewdg_window_upper_timeout_period_4_div_16 = 4,     /*!< 4/16 of timeout_reset_val */
     ewdg_window_upper_timeout_period_5_div_16 = 5,     /*!< 5/16 of timeout_reset_val */
     ewdg_window_upper_timeout_period_6_div_16 = 6,     /*!< 6/16 of timeout_reset_val */
-    ewdg_window_upper_timeout_period_7_div_16 = 8,     /*!< 7/16 of timeout_reset_val */
+    ewdg_window_upper_timeout_period_7_div_16 = 7,     /*!< 7/16 of timeout_reset_val */
     /*! Maximum allowed upper limit */
     ewdg_window_upper_timeout_period_max = ewdg_window_upper_timeout_period_7_div_16
 } ewdg_window_upper_limit_t;

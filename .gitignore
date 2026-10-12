@@ -7,3 +7,4 @@ CMakeLists.txt
 .code
 .idea
 
+hpm_sdk_version.h.in

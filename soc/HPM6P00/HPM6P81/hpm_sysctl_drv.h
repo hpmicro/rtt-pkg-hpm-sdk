@@ -14,7 +14,7 @@
 /**
  *
  * @brief SYSCTL driver APIs
- * @defgroup sysctl_interface SYSCTL driver APIs
+ * @defgroup sysctl_hpm6p81_interface SYSCTL driver APIs for HPM6P81
  * @ingroup io_interfaces
  * @{
  */
@@ -314,8 +314,8 @@ typedef enum {
  * @brief ADC clock sources
  */
 typedef enum {
-    clock_source_adc_ana_clock = 0,
-    clock_source_adc_ahb_clock = 1,
+    clock_source_adc_ahb_clock = 0,
+    clock_source_adc_ana_clock = 1,
     clock_source_adc_clk_end,
 } clock_source_adc_t;
 

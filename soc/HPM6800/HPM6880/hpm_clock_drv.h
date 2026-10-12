@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2025 HPMicro
+ * Copyright (c) 2023-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -10,6 +10,13 @@
 #include "hpm_common.h"
 #include "hpm_sysctl_drv.h"
 #include "hpm_csr_drv.h"
+
+/**
+ * @brief CLOCK driver APIs
+ * @defgroup clock_hpm6880_interface CLOCK driver APIs for HPM6880
+ * @{
+ *
+ */
 
 #define CLOCK_DIV_INVALID (~0UL)
 
@@ -230,6 +237,8 @@ typedef enum _clock_name {
     clock_adc1 = MAKE_CLOCK_NAME(sysctl_resource_adc1, CLK_SRC_GROUP_ADC, 1),    /* 1 - instance */
 
     clock_crc0 = MAKE_CLOCK_NAME(sysctl_resource_crc0, CLK_SRC_GROUP_AXI_SOC, clock_node_invalid),
+    clock_oamp = MAKE_CLOCK_NAME(sysctl_resource_oamp, CLK_SRC_GROUP_AXI_SOC, clock_node_invalid),
+    clock_sdm0 = MAKE_CLOCK_NAME(sysctl_resource_sdm0, CLK_SRC_GROUP_AXI_SOC, clock_node_invalid),
 
     /* For I2S, there are 2-stage clock source and divider configuration */
     clock_aud0 = MAKE_CLOCK_NAME(RESOURCE_INVALID, CLK_SRC_GROUP_COMMON, clock_node_aud0),
@@ -387,6 +396,7 @@ void clock_remove_from_group(clock_name_t clock_name, uint32_t group);
 /**
  * @brief Check IP in specified group
  * @param[in] clock_name IP clock name
+ * @param[in] group resource group index, valid value: 0/1/2/3
  * @return true if in group, false if not in group
  */
 bool clock_check_in_group(clock_name_t clock_name, uint32_t group);
@@ -442,5 +452,9 @@ void clock_update_core_clock(void);
 #ifdef __cplusplus
 }
 #endif
+
+/**
+ * @}
+ */
 
 #endif /* HPM_CLOCK_DRV_H */

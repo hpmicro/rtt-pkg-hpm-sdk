@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 HPMicro
+ * Copyright (c) 2023-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -8,7 +8,8 @@
 #ifndef HPM_SOC_FEATURE_H
 #define HPM_SOC_FEATURE_H
 
-#include "hpm_soc.h"
+#include "riscv/riscv_core.h"
+#include "hpm_soc_ip.h"
 #include "hpm_soc_ip_feature.h"
 
 /*
@@ -26,7 +27,7 @@
  * I2C Section
  */
 #define I2C_SOC_FIFO_SIZE (4U)
-#define I2C_SOC_TRANSFER_COUNT_MAX (4096U)
+#define I2C_SOC_TRANSFER_COUNT_MAX (65536U)
 
 /*
  * PMIC Section
@@ -44,6 +45,8 @@
 #define I2S_SOC_MAX_CHANNEL_NUM (16U)
 #define I2S_SOC_MAX_TX_CHANNEL_NUM (8U)
 #define I2S_SOC_MAX_TX_FIFO_DEPTH (8U)
+#define I2S_PDM_DATA_LINE (0)
+#define I2S_DAO_DATA_LINE (0)
 #define PDM_I2S HPM_I2S0
 #define DAO_I2S HPM_I2S1
 #define PDM_SOC_SAMPLE_RATE_IN_HZ (16000U)
@@ -62,14 +65,6 @@
 #define PLLCTL_SOC_PLL_HAS_DIV0(x) ((((x) == 1) || ((x) == 2)) ? 1 : 0)
 #define PLLCTL_SOC_PLL_HAS_DIV1(x) ((((x) == 1) || ((x) == 2)) ? 1 : 0)
 
-
-/*
- * PWM Section
- */
-#define PWM_SOC_PWM_MAX_COUNT (8U)
-#define PWM_SOC_CMP_MAX_COUNT (24U)
-#define PWM_SOC_OUTPUT_TO_PWM_MAX_COUNT (8U)
-#define PWM_SOC_OUTPUT_MAX_COUNT (24U)
 
 /*
  * DMA Section
@@ -116,7 +111,7 @@
  * ENET Section
  */
 #define ENET_SOC_DESC_ADDR_ALIGNMENT               (32U)
-#define ENET_SOC_BUFF_ADDR_ALIGNMENT               (4U)
+#define ENET_SOC_BUFF_ADDR_ALIGNMENT               (8U)
 #define ENET_SOC_ADDR_MAX_COUNT                    (5U)
 #define ENET_SOC_ALT_EHD_DES_MIN_LEN               (4U)
 #define ENET_SOC_ALT_EHD_DES_MAX_LEN               (8U)
@@ -143,6 +138,9 @@
 #define ADC16_SOC_TEMP_CH_EN                       (0U)
 #define ADC16_SOC_MAX_SAMPLE_VALUE                 (65535U)
 #define ADC16_SOC_MAX_CONV_CLK_NUM                 (21U)
+#define ADC16_SOC_CONV_CLK_FREQ_MAX                (50000000UL)
+/* WDOG: Do not set INT_EN in adc16_init_channel. Use adc16_enable_wdog_interrupt() after in-window conversion. */
+#define ADC16_SOC_WDOG_INT_EN_DEFERRED             (1U)
 
 /*
  * SYSCTL Section
@@ -217,14 +215,6 @@
 
 #define OTP_SOC_UUID_IDX   (88U)
 #define OTP_SOC_UUID_LEN   (16U) /* in bytes */
-
-/**
- * PWM Section
- *
- */
-#define PWM_SOC_HRPWM_SUPPORT  (0U)
-#define PWM_SOC_SHADOW_TRIG_SUPPORT (0U)
-#define PWM_SOC_TIMER_RESET_SUPPORT (0U)
 
 /**
  * @brief FFA Section

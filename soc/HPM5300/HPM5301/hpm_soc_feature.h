@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2025 HPMicro
+ * Copyright (c) 2023-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -8,7 +8,8 @@
 #ifndef HPM_SOC_FEATURE_H
 #define HPM_SOC_FEATURE_H
 
-#include "hpm_soc.h"
+#include "riscv/riscv_core.h"
+#include "hpm_soc_ip.h"
 #include "hpm_soc_ip_feature.h"
 
 /*
@@ -36,7 +37,7 @@
  * I2C Section
  */
 #define I2C_SOC_FIFO_SIZE (4U)
-#define I2C_SOC_TRANSFER_COUNT_MAX (4096U)
+#define I2C_SOC_TRANSFER_COUNT_MAX (65536U)
 
 /*
  * PMIC Section
@@ -58,13 +59,6 @@
 #define PLLCTL_SOC_PLL_HAS_DIV0(x) ((((x) == 1) || ((x) == 2)) ? 1 : 0)
 #define PLLCTL_SOC_PLL_HAS_DIV1(x) ((((x) == 1) || ((x) == 2)) ? 1 : 0)
 
-
-/*
- * PWM Section
- */
-#define PWM_SOC_PWM_MAX_COUNT (8U)
-#define PWM_SOC_CMP_MAX_COUNT (24U)
-#define PWM_SOC_OUTPUT_TO_PWM_MAX_COUNT (8U)
 
 /*
  * DMA Section
@@ -117,6 +111,9 @@
 #define ADC16_SOC_MAX_CH_NUM                       (15U)
 #define ADC16_SOC_MAX_SAMPLE_VALUE                 (65535U)
 #define ADC16_SOC_MAX_CONV_CLK_NUM                 (21U)
+#define ADC16_SOC_CONV_CLK_FREQ_MAX                (50000000UL)
+/* WDOG: Do not set INT_EN in adc16_init_channel. Use adc16_enable_wdog_interrupt() after in-window conversion. */
+#define ADC16_SOC_WDOG_INT_EN_DEFERRED             (1U)
 #define ADC_SOC_NO_HW_TRIG_SRC                     (1U)
 
 /*
@@ -192,11 +189,6 @@
 #define EWDG_SOC_CLK_DIV_VAL_MAX        (5U)
 #define EWDG_SOC_OVERTIME_REG_WIDTH     (16U)
 #define EWDG_TIMEOUT_INTERRUPT_REQUIRE_EDGE_TRIGGER (1)
-
-/*
- * Sync Timer
- */
-#define SYNT_SOC_HAS_TIMESTAMP             (1U)
 
 /*
  * GPIO

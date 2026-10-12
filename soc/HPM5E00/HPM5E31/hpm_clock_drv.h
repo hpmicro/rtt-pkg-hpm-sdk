@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 HPMicro
+ * Copyright (c) 2024-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -9,6 +9,13 @@
 
 #include "hpm_common.h"
 #include "hpm_sysctl_drv.h"
+
+/**
+ * @brief CLOCK driver APIs
+ * @defgroup clock_hpm5e31_interface CLOCK driver APIs for HPM5E31
+ * @{
+ *
+ */
 
 #define CLOCK_DIV_INVALID (~0UL)
 
@@ -326,6 +333,7 @@ void clock_remove_from_group(clock_name_t clock_name, uint32_t group);
 /**
  * @brief Check IP in specified group
  * @param[in] clock_name IP clock name
+ * @param[in] group resource group index, valid value: 0/1/2/3
  * @return true if in group, false if not in group
  */
 bool clock_check_in_group(clock_name_t clock_name, uint32_t group);
@@ -385,5 +393,9 @@ extern uint32_t hpm_core_clock;
 #ifdef __cplusplus
 }
 #endif
+
+/**
+ * @}
+ */
 
 #endif /* HPM_CLOCK_DRV_H */

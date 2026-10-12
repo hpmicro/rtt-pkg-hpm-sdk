@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 HPMicro
+ * Copyright (c) 2021-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -14,8 +14,8 @@
 
 /**
  *
- * @brief DMA driver APIs
- * @defgroup dma_interface DMA driver APIs
+ * @brief DMAv2 driver APIs
+ * @defgroup dmav2_interface DMAV2 driver APIs
  * @ingroup io_interfaces
  * @{
  */
@@ -87,7 +87,7 @@
             | DMA_INTERRUPT_MASK_HALF_TC)
 
 #define DMA_SUPPORT_64BIT_ADDR (0)
-
+#define DMA_LINKED_DESCRIPTOR_ALIGN (32)
 
 enum {
     dmav2_state_idle = 0,

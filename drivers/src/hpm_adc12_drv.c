@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 HPMicro
+ * Copyright (c) 2021-2026 HPMicro
  *
  * SPDX-License-Identifier: BSD-3-Clause
  *
@@ -8,6 +8,24 @@
 #include "hpm_adc12_drv.h"
 #include "hpm_soc_feature.h"
 
+#ifndef ADC12_RETRY_TO_GET_RESULT_COUNT
+#define ADC12_RETRY_TO_GET_RESULT_COUNT (100U)
+#endif
+
+#ifndef ADC12_PRD_PERIOD_TOL_PERCENT
+#define ADC12_PRD_PERIOD_TOL_PERCENT (5U)
+#endif
+
+static uint64_t adc12_prd_ticks_to_ns(uint64_t ticks, uint32_t adc_clk_hz)
+{
+    uint64_t sec;
+    uint64_t rem;
+
+    sec = ticks / adc_clk_hz;
+    rem = ticks % adc_clk_hz;
+    return (sec * 1000000000ULL) + ((rem * 1000000000ULL) / adc_clk_hz);
+}
+
 void adc12_get_default_config(adc12_config_t *config)
 {
     config->res                = adc12_res_12_bits;
@@ -15,7 +33,7 @@ void adc12_get_default_config(adc12_config_t *config)
     config->adc_clk_div        = adc12_clock_divider_1;
     config->wait_dis           = true;
     config->sel_sync_ahb       = true;
-    config->adc_ahb_en         = false;
+    config->adc_ahb_en         = false; /* Deprecated field; ignored by @ref adc12_init. */
 }
 
 void adc12_get_channel_default_config(adc12_channel_config_t *config)
@@ -93,6 +111,7 @@ hpm_stat_t adc12_deinit(ADC12_Type *ptr)
 hpm_stat_t adc12_init(ADC12_Type *ptr, adc12_config_t *config)
 {
     uint32_t adc_clk_div;
+    uint32_t adc_ahb_en;
 
     /**
      * disable adc
@@ -120,9 +139,14 @@ hpm_stat_t adc12_init(ADC12_Type *ptr, adc12_config_t *config)
     ptr->CONV_CFG1 = ADC12_CONV_CFG1_CONVERT_CLOCK_NUMBER_SET(2 * config->res + 7)
                    | ADC12_CONV_CFG1_CLOCK_DIVIDER_SET(config->adc_clk_div - 1);
 
-    /* Set ADC Config0 */
+    /* Set ADC_CFG0; program ADC_AHB_EN from conv_mode. */
+    if ((config->conv_mode == adc12_conv_mode_sequence) || (config->conv_mode == adc12_conv_mode_preemption)) {
+        adc_ahb_en = 1U;
+    } else {
+        adc_ahb_en = 0U;
+    }
     ptr->ADC_CFG0 = ADC12_ADC_CFG0_SEL_SYNC_AHB_SET(config->sel_sync_ahb)
-                  | ADC12_ADC_CFG0_ADC_AHB_EN_SET(config->adc_ahb_en);
+                  | ADC12_ADC_CFG0_ADC_AHB_EN_SET(adc_ahb_en);
 
     /* Set wait_dis */
     ptr->BUF_CFG0 = ADC12_BUF_CFG0_WAIT_DIS_SET(config->wait_dis);
@@ -138,9 +162,10 @@ hpm_stat_t adc12_init(ADC12_Type *ptr, adc12_config_t *config)
 
     adc_clk_div = config->adc_clk_div;
 
-    if (adc_clk_div == ADC12_SOC_CLOCK_CLK_DIV) {
+    /* calibration uses a fixed 1:4; restore the app divider after if it differs */
+    if (adc_clk_div != adc12_clock_divider_4) {
         ptr->CONV_CFG1 = (ptr->CONV_CFG1 & ~ADC12_CONV_CFG1_CLOCK_DIVIDER_MASK)
-                         | ADC12_CONV_CFG1_CLOCK_DIVIDER_SET(config->adc_clk_div + 1);
+                         | ADC12_CONV_CFG1_CLOCK_DIVIDER_SET(adc12_clock_divider_4 - 1);
     }
 
     /* Set enadc */
@@ -150,9 +175,9 @@ hpm_stat_t adc12_init(ADC12_Type *ptr, adc12_config_t *config)
     adc12_do_calibration(ptr, config->diff_sel);
 
     /* Set ADC clock divider */
-    if (adc_clk_div == ADC12_SOC_CLOCK_CLK_DIV) {
+    if (adc_clk_div != adc12_clock_divider_4) {
         ptr->CONV_CFG1 = (ptr->CONV_CFG1 & ~ADC12_CONV_CFG1_CLOCK_DIVIDER_MASK)
-                       | ADC12_CONV_CFG1_CLOCK_DIVIDER_SET(config->adc_clk_div);
+                       | ADC12_CONV_CFG1_CLOCK_DIVIDER_SET(adc_clk_div - 1);
     }
 
     /*-------------------------------------------------------------------------------
@@ -186,10 +211,15 @@ hpm_stat_t adc12_init_channel(ADC12_Type *ptr, adc12_channel_config_t *config)
                                 | ADC12_SAMPLE_CFG_SAMPLE_CLOCK_NUMBER_SHIFT_SET(config->sample_cycle_shift)
                                 | ADC12_SAMPLE_CFG_SAMPLE_CLOCK_NUMBER_SET(config->sample_cycle);
 
-    /* Enable watchdog interrupt */
+#if defined(ADC12_SOC_WDOG_INT_EN_DEFERRED) && (ADC12_SOC_WDOG_INT_EN_DEFERRED)
+    /* Watchdog IRQ enable is deferred: see adc12_enable_wdog_interrupt() after in-window conversion. */
+    (void) config->wdog_int_en;
+#else
+    /* Enable WDOG interrupt together with threshold (SoCs / callers without deferred mode). */
     if (config->wdog_int_en) {
-        ptr->INT_EN |= 1 << config->ch;
+        ptr->INT_EN |= 1U << config->ch;
     }
+#endif
 
     return status_success;
 }
@@ -231,18 +261,21 @@ hpm_stat_t adc12_init_seq_dma(ADC12_Type *ptr, adc12_dma_config_t *dma_config)
     ptr->SEQ_DMA_CFG = (ptr->SEQ_DMA_CFG & ~ADC12_SEQ_DMA_CFG_BUF_LEN_MASK)
                      | ADC12_SEQ_DMA_CFG_BUF_LEN_SET(dma_config->buff_len_in_4bytes - 1);
 
-    /* Set stop_en and stop_pos */
-    if (dma_config->stop_en) {
-        ptr->SEQ_DMA_CFG = (ptr->SEQ_DMA_CFG & ~ADC12_SEQ_DMA_CFG_STOP_POS_MASK)
-                         | ADC12_SEQ_DMA_CFG_STOP_EN_MASK
-                         | ADC12_SEQ_DMA_CFG_STOP_POS_SET(dma_config->stop_pos);
-    }
+    /* STOP_EN and STOP_POS are programmed independently. */
+    ptr->SEQ_DMA_CFG = (ptr->SEQ_DMA_CFG
+                        & ~(ADC12_SEQ_DMA_CFG_STOP_EN_MASK | ADC12_SEQ_DMA_CFG_STOP_POS_MASK))
+                     | ADC12_SEQ_DMA_CFG_STOP_POS_SET(dma_config->stop_pos)
+                     | (dma_config->stop_en ? ADC12_SEQ_DMA_CFG_STOP_EN_MASK : 0U);
 
     return status_success;
 }
 
 hpm_stat_t adc12_set_prd_config(ADC12_Type *ptr, adc12_prd_config_t *config)
 {
+    uint16_t result;
+    uint32_t buf_cfg0_bkp;
+    uint8_t retry_cnt = 0;
+
     /* Check the specified channel number */
     if (ADC12_IS_CHANNEL_INVALID(config->ch)) {
         return status_invalid_argument;
@@ -253,6 +286,14 @@ hpm_stat_t adc12_set_prd_config(ADC12_Type *ptr, adc12_prd_config_t *config)
         return status_invalid_argument;
     }
 
+    /* save BUF_CFG0 */
+    buf_cfg0_bkp = ptr->BUF_CFG0;
+
+    ptr->BUF_CFG0 |= ADC16_BUF_CFG0_WAIT_DIS_MASK;
+
+    /* The result will be synced to the register PRD_CFG[config->ch].PRD_RESULT after ADC finishs one conversion in oneshot mode. */
+    adc12_get_oneshot_result(ptr, config->ch, &result);
+
     /* Set periodic prescale */
     ptr->PRD_CFG[config->ch].PRD_CFG = (ptr->PRD_CFG[config->ch].PRD_CFG & ~ADC12_PRD_CFG_PRD_CFG_PRESCALE_MASK)
                                      | ADC12_PRD_CFG_PRD_CFG_PRESCALE_SET(config->prescale);
@@ -260,6 +301,16 @@ hpm_stat_t adc12_set_prd_config(ADC12_Type *ptr, adc12_prd_config_t *config)
     /* Set period count */
     ptr->PRD_CFG[config->ch].PRD_CFG = (ptr->PRD_CFG[config->ch].PRD_CFG & ~ADC12_PRD_CFG_PRD_CFG_PRD_MASK)
                                      | ADC12_PRD_CFG_PRD_CFG_PRD_SET(config->period_count);
+
+    /* The following logic is applied in the periodic mode to obtain the first valid result as early as possible. */
+    while (adc12_get_oneshot_result(ptr, config->ch, &result) != status_success) {
+        if (retry_cnt++ > ADC12_RETRY_TO_GET_RESULT_COUNT) {
+            break;
+        }
+    }
+
+    /* restore BUF_CFG0 */
+    ptr->BUF_CFG0 = buf_cfg0_bkp;
 
     return status_success;
 }
@@ -318,7 +369,7 @@ hpm_stat_t adc12_set_pmt_config(ADC12_Type *ptr, adc12_pmt_config_t *config)
         return status_invalid_argument;
     }
 
-	/* Check the triggier channel */
+	/* Check the trigger channel */
     if (ADC12_IS_TRIG_CH_INVLAID(config->trig_ch)) {
         return status_invalid_argument;
     }
@@ -369,5 +420,91 @@ hpm_stat_t adc12_get_prd_result(ADC12_Type *ptr, uint8_t ch, uint16_t *result)
 
     *result = ADC12_PRD_CFG_PRD_RESULT_CHAN_RESULT_GET(ptr->PRD_CFG[ch].PRD_RESULT);
 
+    return status_success;
+}
+
+hpm_stat_t adc12_calc_clock_divider(uint32_t input_hz, uint32_t target_conv_hz, uint32_t *div)
+{
+    uint32_t d;
+
+    if ((input_hz == 0) || (target_conv_hz == 0) || (div == NULL)) {
+        return status_invalid_argument;
+    }
+
+    d = (input_hz + target_conv_hz - 1U) / target_conv_hz;
+    if (d < adc12_clock_divider_1) {
+        d = adc12_clock_divider_1;
+    }
+    if ((d > adc12_clock_divider_16) || ((input_hz / d) > target_conv_hz)) {
+        return status_invalid_argument;
+    }
+
+    *div = d;
+    return status_success;
+}
+
+hpm_stat_t adc12_calc_prd_config(uint32_t adc_clk_hz, uint64_t target_period_ns, adc12_prd_config_t *cfg)
+{
+    uint8_t prescale;
+    uint8_t prescale_max;
+    uint8_t best_prescale;
+    uint8_t best_period_count;
+    uint16_t reload;
+    uint64_t ticks;
+    uint64_t actual_ns;
+    uint64_t diff;
+    uint64_t best_diff;
+
+    if ((adc_clk_hz == 0) || (target_period_ns == 0) || (cfg == NULL)) {
+        return status_invalid_argument;
+    }
+
+    prescale_max = (uint8_t)(ADC12_PRD_CFG_PRD_CFG_PRESCALE_MASK >> ADC12_PRD_CFG_PRD_CFG_PRESCALE_SHIFT);
+    best_diff = UINT64_MAX;
+    best_prescale = 0;
+    best_period_count = 1;
+
+    /* nearest discrete 2^prescale*prd step; period timer resolution is coarse at long periods */
+    for (prescale = 0; prescale <= prescale_max; prescale++) {
+        for (reload = 2; reload <= 256; reload++) {
+            ticks = (1ULL << prescale) * reload;
+            actual_ns = adc12_prd_ticks_to_ns(ticks, adc_clk_hz);
+            if (actual_ns > target_period_ns) {
+                diff = actual_ns - target_period_ns;
+            } else {
+                diff = target_period_ns - actual_ns;
+            }
+            if (diff < best_diff) {
+                best_diff = diff;
+                best_prescale = prescale;
+                best_period_count = (uint8_t)(reload - 1U);
+            }
+        }
+    }
+
+    if ((best_diff * 100ULL) > (target_period_ns * ADC12_PRD_PERIOD_TOL_PERCENT)) {
+        return status_invalid_argument;
+    }
+
+    cfg->prescale = best_prescale;
+    cfg->period_count = best_period_count;
+    return status_success;
+}
+
+uint32_t adc12_get_convert_cycles(uint8_t res)
+{
+    return (2U * (uint32_t)res) + 8U;
+}
+
+hpm_stat_t adc12_calc_sample_rate(uint32_t conv_hz, uint32_t sample_cycle, uint32_t convert_cycles, uint32_t *fs_hz)
+{
+    uint32_t cycles;
+
+    if ((conv_hz == 0) || (sample_cycle == 0) || (convert_cycles == 0) || (fs_hz == NULL)) {
+        return status_invalid_argument;
+    }
+
+    cycles = sample_cycle + convert_cycles;
+    *fs_hz = conv_hz / cycles;
     return status_success;
 }
